@@ -78,6 +78,17 @@
     --border: 220 20% 20%;
     --input: 220 20% 20%;
     --ring: 220 70% 55%;
+    --status-pending: 38 92% 60%;
+    --status-pending-bg: 38 50% 15%;
+    --status-repair: 220 70% 60%;
+    --status-repair-bg: 220 40% 15%;
+    --status-waiting: 25 95% 60%;
+    --status-waiting-bg: 25 50% 15%;
+    --status-ready: 142 71% 55%;
+    --status-ready-bg: 142 40% 15%;
+    --status-delivered: 220 10% 60%;
+    --status-delivered-bg: 220 10% 18%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
