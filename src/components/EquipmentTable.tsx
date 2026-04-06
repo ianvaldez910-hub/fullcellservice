@@ -44,6 +44,7 @@ export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onRece
             <th className="pb-3 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Ingreso</th>
             <th className="pb-3 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Presupuesto</th>
             <th className="pb-3 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Saldo</th>
+            <th className="pb-3 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Estado</th>
             <th className="pb-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Acciones</th>
           </tr>
         </thead>
