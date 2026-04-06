@@ -75,6 +75,16 @@ export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onRece
                   )}
                 </td>
                 <td className="py-3 pr-4">
+                  {(() => {
+                    const saldo = item.budget - item.deposit;
+                    return (
+                      <span className={`font-mono font-bold ${saldo > 0 ? 'text-destructive' : 'text-status-ready'}`}>
+                        ${saldo.toLocaleString()}
+                      </span>
+                    );
+                  })()}
+                </td>
+                <td className="py-3 pr-4">
                   <Select value={item.status} onValueChange={v => onStatusChange(item.id, v as EquipmentStatus)}>
                     <SelectTrigger className={`h-8 text-xs w-44 border-0 ${config.bg} ${config.color} font-semibold`}>
                       <SelectValue />
