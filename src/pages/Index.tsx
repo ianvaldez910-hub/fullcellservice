@@ -8,7 +8,6 @@ import { ReceiptDialog } from '@/components/ReceiptDialog';
 import { CashRegister } from '@/components/CashRegister';
 import { FinancialSummary } from '@/components/FinancialSummary';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Wrench } from 'lucide-react';
@@ -129,6 +128,9 @@ export default function Index() {
             />
           </div>
         </div>
+
+        {/* Resumen Financiero */}
+        <FinancialSummary items={items} />
 
         {/* Caja */}
         <CashRegister />
