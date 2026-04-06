@@ -6,6 +6,7 @@ import { EquipmentTable } from '@/components/EquipmentTable';
 import { EquipmentForm } from '@/components/EquipmentForm';
 import { ReceiptDialog } from '@/components/ReceiptDialog';
 import { CashRegister } from '@/components/CashRegister';
+import { FinancialSummary } from '@/components/FinancialSummary';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,7 +80,7 @@ export default function Index() {
               <Wrench className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-bold leading-tight">TechTaller</h1>
+              <h1 className="text-lg font-bold leading-tight">FullCell Service</h1>
               <p className="text-xs text-muted-foreground">Gestión de Servicio Técnico</p>
             </div>
           </div>
@@ -127,6 +128,9 @@ export default function Index() {
             />
           </div>
         </div>
+
+        {/* Resumen Financiero */}
+        <FinancialSummary items={items} />
 
         {/* Caja */}
         <CashRegister />

@@ -43,6 +43,7 @@ export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onRece
             <th className="pb-3 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Problema</th>
             <th className="pb-3 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Ingreso</th>
             <th className="pb-3 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Presupuesto</th>
+            <th className="pb-3 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Saldo</th>
             <th className="pb-3 pr-4 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Estado</th>
             <th className="pb-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Acciones</th>
           </tr>
@@ -72,6 +73,16 @@ export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onRece
                   {item.deposit > 0 && (
                     <span className="text-xs text-muted-foreground ml-1">(Seña: ${item.deposit.toLocaleString()})</span>
                   )}
+                </td>
+                <td className="py-3 pr-4">
+                  {(() => {
+                    const saldo = item.budget - item.deposit;
+                    return (
+                      <span className={`font-mono font-bold ${saldo > 0 ? 'text-destructive' : 'text-status-ready'}`}>
+                        ${saldo.toLocaleString()}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="py-3 pr-4">
                   <Select value={item.status} onValueChange={v => onStatusChange(item.id, v as EquipmentStatus)}>
