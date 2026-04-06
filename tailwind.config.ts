@@ -47,6 +47,18 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        status: {
+          pending: "hsl(var(--status-pending))",
+          "pending-bg": "hsl(var(--status-pending-bg))",
+          repair: "hsl(var(--status-repair))",
+          "repair-bg": "hsl(var(--status-repair-bg))",
+          waiting: "hsl(var(--status-waiting))",
+          "waiting-bg": "hsl(var(--status-waiting-bg))",
+          ready: "hsl(var(--status-ready))",
+          "ready-bg": "hsl(var(--status-ready-bg))",
+          delivered: "hsl(var(--status-delivered))",
+          "delivered-bg": "hsl(var(--status-delivered-bg))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
