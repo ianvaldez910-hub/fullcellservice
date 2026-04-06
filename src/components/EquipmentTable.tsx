@@ -1,4 +1,5 @@
 import { Equipment, STATUS_CONFIG, STATUS_OPTIONS, EquipmentStatus } from '@/types/equipment';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +13,12 @@ interface EquipmentTableProps {
   onDelete: (id: number) => void;
   onStatusChange: (id: number, status: EquipmentStatus) => void;
   onReceipt: (item: Equipment) => void;
+}
+
+function daysSinceDate(dateStr: string): number {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onReceipt }: EquipmentTableProps) {
@@ -43,10 +50,17 @@ export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onRece
         <tbody>
           {items.map(item => {
             const config = STATUS_CONFIG[item.status];
+            const isPendingLong = item.status === 'Pendiente' && daysSinceDate(item.dateIn) > 3;
             return (
-              <tr key={item.id} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
-                <td className="py-3 pr-4 font-mono font-bold text-muted-foreground">{item.id}</td>
-                <td className="py-3 pr-4 font-medium">{item.clientName}</td>
+              <tr key={item.id} className={`border-b border-border/50 hover:bg-muted/50 transition-colors ${isPendingLong ? 'bg-destructive/10 hover:bg-destructive/15' : ''}`}>
+                <td className="py-3 pr-4 font-mono font-bold text-muted-foreground">
+                  {item.id}
+                  {isPendingLong && <span className="ml-1 text-destructive text-xs" title="Más de 3 días pendiente">⚠️</span>}
+                </td>
+                <td className="py-3 pr-4">
+                  <div className="font-medium">{item.clientName}</div>
+                  {item.phone && <div className="text-xs text-muted-foreground">{item.phone}</div>}
+                </td>
                 <td className="py-3 pr-4">
                   <span className="font-medium">{item.brand}</span>
                   <span className="text-muted-foreground ml-1">{item.model}</span>
@@ -73,6 +87,7 @@ export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onRece
                 </td>
                 <td className="py-3">
                   <div className="flex gap-1">
+                    <WhatsAppButton item={item} />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onReceipt(item)} title="Recibo">
                       <FileText className="h-4 w-4" />
                     </Button>

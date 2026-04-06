@@ -1,9 +1,9 @@
-import { Equipment, STATUS_CONFIG } from '@/types/equipment';
+import { Equipment, STATUS_CONFIG, WARRANTY_OPTIONS } from '@/types/equipment';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Printer, Download } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { useRef } from 'react';
 
 interface ReceiptDialogProps {
@@ -18,6 +18,7 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
   if (!item) return null;
 
   const remaining = item.budget - item.deposit;
+  const warrantyLabel = WARRANTY_OPTIONS.find(w => w.value === item.warranty)?.label ?? 'Sin garantía';
 
   const handlePrint = () => {
     const content = receiptRef.current;
@@ -40,6 +41,7 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
       <div class="row"><span class="label">Fecha:</span><span>${item.dateIn}</span></div>
       <div class="divider"></div>
       <div class="row"><span class="label">Cliente:</span><span>${item.clientName}</span></div>
+      ${item.phone ? `<div class="row"><span class="label">Teléfono:</span><span>${item.phone}</span></div>` : ''}
       <div class="row"><span class="label">Equipo:</span><span>${item.brand} ${item.model}</span></div>
       <div class="divider"></div>
       <div class="row"><span class="label">Problema:</span></div>
@@ -50,6 +52,7 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
       <div class="row total"><span>Saldo:</span><span>$${remaining.toLocaleString()}</span></div>
       ${item.dateEstimated ? `<div class="divider"></div><div class="row"><span class="label">Entrega est.:</span><span>${item.dateEstimated}</span></div>` : ''}
       <div class="row"><span class="label">Estado:</span><span>${item.status}</span></div>
+      <div class="row"><span class="label">Garantía:</span><span>${warrantyLabel}</span></div>
       <div class="footer">Gracias por confiar en nuestro servicio</div>
       </body></html>
     `);
@@ -71,6 +74,7 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
           
           <div className="space-y-1.5">
             <div className="flex justify-between"><span className="text-muted-foreground">Cliente:</span><span className="font-semibold">{item.clientName}</span></div>
+            {item.phone && <div className="flex justify-between"><span className="text-muted-foreground">Tel:</span><span>{item.phone}</span></div>}
             <div className="flex justify-between"><span className="text-muted-foreground">Equipo:</span><span>{item.brand} {item.model}</span></div>
           </div>
 
@@ -90,6 +94,10 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
               <span className="text-muted-foreground">Entrega est.:</span><span>{item.dateEstimated}</span>
             </div>
           )}
+
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Garantía:</span><span>{warrantyLabel}</span>
+          </div>
 
           <div className="text-center text-xs text-muted-foreground pt-2">
             Gracias por confiar en nuestro servicio
