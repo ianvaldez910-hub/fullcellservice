@@ -5,6 +5,8 @@ import { StatusDashboard } from '@/components/StatusDashboard';
 import { EquipmentTable } from '@/components/EquipmentTable';
 import { EquipmentForm } from '@/components/EquipmentForm';
 import { ReceiptDialog } from '@/components/ReceiptDialog';
+import { CashRegister } from '@/components/CashRegister';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Wrench } from 'lucide-react';
@@ -81,10 +83,13 @@ export default function Index() {
               <p className="text-xs text-muted-foreground">Gestión de Servicio Técnico</p>
             </div>
           </div>
-          <Button onClick={handleAdd} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nueva Orden
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button onClick={handleAdd} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nueva Orden
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -122,6 +127,9 @@ export default function Index() {
             />
           </div>
         </div>
+
+        {/* Caja */}
+        <CashRegister />
       </main>
 
       {/* Modals */}
