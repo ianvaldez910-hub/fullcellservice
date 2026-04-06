@@ -79,7 +79,7 @@ export default function Index() {
               <Wrench className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-bold leading-tight">TechTaller</h1>
+              <h1 className="text-lg font-bold leading-tight">FullCell Service</h1>
               <p className="text-xs text-muted-foreground">Gestión de Servicio Técnico</p>
             </div>
           </div>
