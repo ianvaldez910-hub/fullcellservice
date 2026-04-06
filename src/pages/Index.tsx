@@ -6,6 +6,8 @@ import { EquipmentTable } from '@/components/EquipmentTable';
 import { EquipmentForm } from '@/components/EquipmentForm';
 import { ReceiptDialog } from '@/components/ReceiptDialog';
 import { CashRegister } from '@/components/CashRegister';
+import { FinancialSummary } from '@/components/FinancialSummary';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
