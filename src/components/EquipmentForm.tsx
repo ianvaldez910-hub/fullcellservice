@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Equipment, STATUS_OPTIONS, EquipmentStatus, WARRANTY_OPTIONS, WarrantyDays } from '@/types/equipment';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PatternDrawer } from '@/components/PatternDrawer';
 import { validateArgPhone } from '@/lib/whatsapp';
 import { Button } from '@/components/ui/button';
@@ -42,9 +43,10 @@ export function EquipmentForm({ open, onClose, onSubmit, initialData }: Equipmen
     warranty: initialData?.warranty ?? (0 as WarrantyDays),
     internalNotes: initialData?.internalNotes ?? '',
     images: initialData?.images ?? [] as string[],
+    hasHumidity: initialData?.hasHumidity ?? false,
   });
 
-  const handleChange = (field: string, value: string | number | number[] | string[]) => {
+  const handleChange = (field: string, value: string | number | number[] | string[] | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
@@ -213,6 +215,23 @@ export function EquipmentForm({ open, onClose, onSubmit, initialData }: Equipmen
             </div>
             <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
             <p className="text-[10px] text-muted-foreground">Máx. 2MB por imagen. Documentá rayas, golpes o detalles previos.</p>
+          </div>
+
+          {/* Evidencia de Humedad */}
+          <div className="flex items-start space-x-3 rounded-lg border border-dashed border-status-waiting p-4 bg-status-waiting/5">
+            <Checkbox
+              id="hasHumidity"
+              checked={form.hasHumidity}
+              onCheckedChange={(checked) => handleChange('hasHumidity', checked === true)}
+            />
+            <div className="space-y-1 leading-none">
+              <label htmlFor="hasHumidity" className="text-sm font-medium cursor-pointer">
+                💧 Evidencia de Humedad / Sulfato
+              </label>
+              <p className="text-[10px] text-muted-foreground">
+                Marcar si el equipo presenta rastros de humedad o corrosión al ingreso
+              </p>
+            </div>
           </div>
 
           {/* Observaciones Internas */}

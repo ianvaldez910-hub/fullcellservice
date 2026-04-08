@@ -3,10 +3,26 @@ import { Equipment, EquipmentStatus } from '@/types/equipment';
 
 const STORAGE_KEY = 'workshop-equipment';
 
+function sanitizeItem(item: any): Equipment {
+  return {
+    ...item,
+    budget: Number(item.budget) || 0,
+    deposit: Number(item.deposit) || 0,
+    warranty: item.warranty ?? 0,
+    phone: item.phone ?? '',
+    altPhone: item.altPhone ?? '',
+    security: item.security ?? '',
+    securityPattern: item.securityPattern ?? [],
+    internalNotes: item.internalNotes ?? '',
+    images: item.images ?? [],
+    hasHumidity: item.hasHumidity ?? false,
+  };
+}
+
 function loadEquipment(): Equipment[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    return data ? (JSON.parse(data) as any[]).map(sanitizeItem) : [];
   } catch {
     return [];
   }

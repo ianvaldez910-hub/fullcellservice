@@ -25,6 +25,7 @@ export interface Equipment {
   warranty: WarrantyDays;
   internalNotes: string;
   images: string[]; // base64 encoded
+  hasHumidity: boolean;
 }
 
 export interface CashEntry {

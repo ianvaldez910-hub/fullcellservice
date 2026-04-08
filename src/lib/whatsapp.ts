@@ -11,9 +11,14 @@ export function formatPhoneForWhatsApp(phone: string): string {
   return `549${digits}`;
 }
 
-export function buildWhatsAppReadyMessage(item: Equipment): string {
-  const remaining = item.budget - item.deposit;
-  return `Hola ${item.clientName}, te informamos desde el servicio técnico que tu ${item.brand} ${item.model} ya se encuentra listo para retirar. El saldo pendiente es de $${remaining.toLocaleString()}. ¡Te esperamos!`;
+export function buildWhatsAppReadyMessage(item: Equipment, businessName?: string): string {
+  const remaining = (item.budget || 0) - (item.deposit || 0);
+  const from = businessName || 'el servicio técnico';
+  let msg = `Hola ${item.clientName}, te informamos desde ${from} que tu ${item.brand} ${item.model} ya se encuentra listo para retirar. El saldo pendiente es de $${remaining.toLocaleString()}. ¡Te esperamos!`;
+  if (item.hasHumidity) {
+    msg += `\n\n⚠️ Nota: El equipo fue ingresado con evidencia de humedad/sulfato.`;
+  }
+  return msg;
 }
 
 export function openWhatsApp(phone: string, message: string) {
