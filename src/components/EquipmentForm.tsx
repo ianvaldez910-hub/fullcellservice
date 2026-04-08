@@ -44,8 +44,9 @@ export function EquipmentForm({ open, onClose, onSubmit, initialData }: Equipmen
     internalNotes: initialData?.internalNotes ?? '',
     images: initialData?.images ?? [] as string[],
     hasHumidity: initialData?.hasHumidity ?? false,
+  });
 
-  const handleChange = (field: string, value: string | number | number[] | string[]) => {
+  const handleChange = (field: string, value: string | number | number[] | string[] | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
