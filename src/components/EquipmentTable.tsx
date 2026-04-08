@@ -13,6 +13,7 @@ interface EquipmentTableProps {
   onDelete: (id: number) => void;
   onStatusChange: (id: number, status: EquipmentStatus) => void;
   onReceipt: (item: Equipment) => void;
+  businessName?: string;
 }
 
 function daysSinceDate(dateStr: string): number {
@@ -21,7 +22,7 @@ function daysSinceDate(dateStr: string): number {
   return Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onReceipt }: EquipmentTableProps) {
+export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onReceipt, businessName }: EquipmentTableProps) {
   if (items.length === 0) {
     return (
       <div className="text-center py-16 text-muted-foreground">
@@ -61,6 +62,11 @@ export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onRece
                 <td className="py-3 pr-4">
                   <div className="font-medium">{item.clientName}</div>
                   {item.phone && <div className="text-xs text-muted-foreground">{item.phone}</div>}
+                  {item.hasHumidity && (
+                    <span className="text-[10px] bg-status-waiting/20 text-status-waiting px-1.5 py-0.5 rounded font-semibold">
+                      💧 Humedad
+                    </span>
+                  )}
                 </td>
                 <td className="py-3 pr-4">
                   <span className="font-medium">{item.brand}</span>
@@ -98,7 +104,7 @@ export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onRece
                 </td>
                 <td className="py-3">
                   <div className="flex gap-1">
-                    <WhatsAppButton item={item} />
+                    <WhatsAppButton item={item} businessName={businessName} />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onReceipt(item)} title="Recibo">
                       <FileText className="h-4 w-4" />
                     </Button>

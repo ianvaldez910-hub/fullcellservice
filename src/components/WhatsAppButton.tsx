@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Equipment } from '@/types/equipment';
 import { buildWhatsAppReadyMessage, openWhatsApp } from '@/lib/whatsapp';
 import { Button } from '@/components/ui/button';
@@ -10,10 +9,11 @@ import {
 interface WhatsAppButtonProps {
   item: Equipment;
   size?: 'icon' | 'default';
+  businessName?: string;
 }
 
-export function WhatsAppButton({ item, size = 'icon' }: WhatsAppButtonProps) {
-  const message = buildWhatsAppReadyMessage(item);
+export function WhatsAppButton({ item, size = 'icon', businessName }: WhatsAppButtonProps) {
+  const message = buildWhatsAppReadyMessage(item, businessName);
   const hasAlt = !!item.altPhone;
 
   const handleSend = (phone: string) => {
