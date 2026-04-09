@@ -1,21 +1,27 @@
-import { BusinessProfile } from '@/hooks/useBusinessProfile';
+import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfileDB } from '@/hooks/useProfileDB';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
 import { toast } from 'sonner';
-import { Store, MessageCircle } from 'lucide-react';
+import { Store, MessageCircle, MapPin, Clock } from 'lucide-react';
 
-interface Props {
-  profile: BusinessProfile;
-  onUpdate: (data: Partial<BusinessProfile>) => void;
-}
+export function BusinessProfileSettings() {
+  const { profile } = useAuth();
+  const { updateProfile } = useProfileDB();
 
-export function BusinessProfileSettings({ profile, onUpdate }: Props) {
-  const [form, setForm] = useState(profile);
+  const [form, setForm] = useState({
+    business_name: profile?.business_name || 'Mi Taller',
+    whatsapp_number: profile?.whatsapp_number || '',
+    email: profile?.email || '',
+    address: profile?.address || '',
+    city: profile?.city || '',
+    business_hours: profile?.business_hours || '',
+  });
 
-  const handleSave = () => {
-    onUpdate(form);
+  const handleSave = async () => {
+    await updateProfile(form);
     toast.success('Perfil del negocio guardado');
   };
 
@@ -36,10 +42,9 @@ export function BusinessProfileSettings({ profile, onUpdate }: Props) {
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nombre del Negocio</Label>
           <Input
             placeholder="Ej: FullCell Service"
-            value={form.businessName}
-            onChange={e => setForm(f => ({ ...f, businessName: e.target.value }))}
+            value={form.business_name}
+            onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))}
           />
-          <p className="text-[10px] text-muted-foreground">Se usa en los mensajes automáticos de WhatsApp</p>
         </div>
 
         <div className="space-y-2">
@@ -49,11 +54,54 @@ export function BusinessProfileSettings({ profile, onUpdate }: Props) {
           </Label>
           <Input
             placeholder="Ej: 1155667788"
-            value={form.whatsappNumber}
-            onChange={e => setForm(f => ({ ...f, whatsappNumber: e.target.value.replace(/\D/g, '') }))}
+            value={form.whatsapp_number}
+            onChange={e => setForm(f => ({ ...f, whatsapp_number: e.target.value.replace(/\D/g, '') }))}
             inputMode="numeric"
           />
           <p className="text-[10px] text-muted-foreground">Número sin 0 ni 15 (formato Argentina)</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Correo Electrónico</Label>
+          <Input
+            type="email"
+            placeholder="taller@email.com"
+            value={form.email}
+            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <MapPin className="inline h-3 w-3 mr-1" />
+            Dirección del Taller
+          </Label>
+          <Input
+            placeholder="Ej: Av. Corrientes 1234"
+            value={form.address}
+            onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ciudad</Label>
+          <Input
+            placeholder="Ej: Buenos Aires"
+            value={form.city}
+            onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <Clock className="inline h-3 w-3 mr-1" />
+            Horario de Atención
+          </Label>
+          <Input
+            placeholder="Ej: Lun-Vie 9:00-18:00"
+            value={form.business_hours}
+            onChange={e => setForm(f => ({ ...f, business_hours: e.target.value }))}
+          />
         </div>
 
         <Button onClick={handleSave} className="w-full">Guardar Cambios</Button>
