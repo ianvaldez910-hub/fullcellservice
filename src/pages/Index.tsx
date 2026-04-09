@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useEquipment } from '@/hooks/useEquipment';
-import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { useEquipmentDB, EquipmentItem } from '@/hooks/useEquipmentDB';
+import { useAuth } from '@/hooks/useAuth';
 import { Equipment, EquipmentStatus } from '@/types/equipment';
 import { StatusDashboard } from '@/components/StatusDashboard';
 import { EquipmentTable } from '@/components/EquipmentTable';
@@ -9,31 +9,58 @@ import { ReceiptDialog } from '@/components/ReceiptDialog';
 import { CashRegister } from '@/components/CashRegister';
 import { FinancialSummary } from '@/components/FinancialSummary';
 import { BusinessProfileSettings } from '@/components/BusinessProfileSettings';
+import { AdminPanel } from '@/components/AdminPanel';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarProvider, SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Plus, Search, Wrench, LayoutDashboard, Settings, Banknote } from 'lucide-react';
+import { Plus, Search, Wrench, LayoutDashboard, Settings, Banknote, Shield, LogOut, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Page = 'dashboard' | 'settings' | 'cash';
+type Page = 'dashboard' | 'settings' | 'cash' | 'admin';
+
+function itemToEquipment(item: EquipmentItem): Equipment {
+  return {
+    id: item.orderNumber,
+    clientName: item.clientName,
+    phone: item.phone,
+    altPhone: item.altPhone,
+    brand: item.brand,
+    model: item.model,
+    security: item.security,
+    securityPattern: item.securityPattern,
+    dateIn: item.dateIn,
+    dateEstimated: item.dateEstimated,
+    problem: item.problem,
+    budget: item.budget,
+    deposit: item.deposit,
+    status: item.status,
+    warranty: item.warranty as any,
+    internalNotes: item.internalNotes,
+    images: item.images,
+    hasHumidity: item.hasHumidity,
+  };
+}
 
 export default function Index() {
-  const { items, addEquipment, updateEquipment, deleteEquipment, getStatusCounts } = useEquipment();
-  const { profile, updateProfile } = useBusinessProfile();
+  const { items, addEquipment, updateEquipment, deleteEquipment, getStatusCounts } = useEquipmentDB();
+  const { profile, isAdmin, signOut, trialDaysLeft } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EquipmentStatus | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Equipment | undefined>();
+  const [editingItem, setEditingItem] = useState<EquipmentItem | undefined>();
   const [receiptItem, setReceiptItem] = useState<Equipment | null>(null);
   const [page, setPage] = useState<Page>('dashboard');
 
+  const equipmentList = useMemo(() => items.map(itemToEquipment), [items]);
+
   const filtered = useMemo(() => {
-    let result = items;
+    let result = equipmentList;
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(i =>
@@ -43,51 +70,66 @@ export default function Index() {
         String(i.id).includes(q)
       );
     }
-    if (statusFilter) {
-      result = result.filter(i => i.status === statusFilter);
-    }
+    if (statusFilter) result = result.filter(i => i.status === statusFilter);
     return result.sort((a, b) => b.id - a.id);
-  }, [items, search, statusFilter]);
+  }, [equipmentList, search, statusFilter]);
 
-  // Daily auto-summary
   const dailySummary = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const todayItems = items.filter(i => i.dateIn === today);
+    const todayItems = equipmentList.filter(i => i.dateIn === today);
     const delivered = todayItems.filter(i => i.status === 'Entregado');
     const totalDelivered = delivered.reduce((s, i) => s + (i.budget || 0), 0);
     const totalDeposits = todayItems.filter(i => i.status !== 'Entregado').reduce((s, i) => s + (i.deposit || 0), 0);
     return { totalDelivered, totalDeposits, total: totalDelivered + totalDeposits };
-  }, [items]);
+  }, [equipmentList]);
 
   const handleAdd = () => { setEditingItem(undefined); setFormOpen(true); };
-  const handleEdit = (item: Equipment) => { setEditingItem(item); setFormOpen(true); };
+  const handleEdit = (item: Equipment) => {
+    const dbItem = items.find(i => i.orderNumber === item.id);
+    if (dbItem) { setEditingItem(dbItem); setFormOpen(true); }
+  };
 
-  const handleSubmit = (data: Omit<Equipment, 'id'>) => {
+  const handleSubmit = async (data: Omit<Equipment, 'id'>) => {
     if (editingItem) {
-      updateEquipment(editingItem.id, data);
-      toast.success(`Orden #${editingItem.id} actualizada`);
+      await updateEquipment(editingItem.id, {
+        clientName: data.clientName, phone: data.phone, altPhone: data.altPhone,
+        brand: data.brand, model: data.model, security: data.security,
+        securityPattern: data.securityPattern, dateIn: data.dateIn,
+        dateEstimated: data.dateEstimated, problem: data.problem,
+        budget: data.budget, deposit: data.deposit, status: data.status,
+        warranty: data.warranty, internalNotes: data.internalNotes,
+        images: data.images, hasHumidity: data.hasHumidity,
+      });
+      toast.success(`Orden #${editingItem.orderNumber} actualizada`);
     } else {
-      addEquipment(data);
+      await addEquipment(data);
       toast.success('Nueva orden creada');
     }
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm(`¿Eliminar la orden #${id}?`)) {
-      deleteEquipment(id);
+  const handleDelete = async (id: number) => {
+    const dbItem = items.find(i => i.orderNumber === id);
+    if (dbItem && confirm(`¿Eliminar la orden #${id}?`)) {
+      await deleteEquipment(dbItem.id);
       toast.success(`Orden #${id} eliminada`);
     }
   };
 
-  const handleStatusChange = (id: number, status: EquipmentStatus) => {
-    updateEquipment(id, { status });
-    toast.success(`Estado actualizado a "${status}"`);
+  const handleStatusChange = async (id: number, status: EquipmentStatus) => {
+    const dbItem = items.find(i => i.orderNumber === id);
+    if (dbItem) {
+      await updateEquipment(dbItem.id, { status });
+      toast.success(`Estado actualizado a "${status}"`);
+    }
   };
+
+  const bName = profile?.business_name || 'FullCell Service';
 
   const menuItems = [
     { title: 'Panel Principal', page: 'dashboard' as Page, icon: LayoutDashboard },
     { title: 'Caja del Día', page: 'cash' as Page, icon: Banknote },
     { title: 'Ajustes', page: 'settings' as Page, icon: Settings },
+    ...(isAdmin ? [{ title: 'Administración', page: 'admin' as Page, icon: Shield }] : []),
   ];
 
   return (
@@ -98,7 +140,7 @@ export default function Index() {
             <SidebarGroup>
               <SidebarGroupLabel className="flex items-center gap-2">
                 <Wrench className="h-4 w-4" />
-                <span>{profile.businessName || 'FullCell Service'}</span>
+                <span>{bName}</span>
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
@@ -113,6 +155,12 @@ export default function Index() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={signOut} className="text-destructive">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Cerrar Sesión</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -120,7 +168,6 @@ export default function Index() {
         </Sidebar>
 
         <div className="flex-1 flex flex-col">
-          {/* Header */}
           <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -129,16 +176,20 @@ export default function Index() {
                   <Wrench className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold leading-tight">{profile.businessName || 'FullCell Service'}</h1>
+                  <h1 className="text-lg font-bold leading-tight">{bName}</h1>
                   <p className="text-xs text-muted-foreground">Gestión de Servicio Técnico</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {profile?.license_status === 'trial' && trialDaysLeft > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    Prueba: {trialDaysLeft} día{trialDaysLeft !== 1 ? 's' : ''}
+                  </Badge>
+                )}
                 <ThemeToggle />
                 {page === 'dashboard' && (
                   <Button onClick={handleAdd} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Nueva Orden
+                    <Plus className="h-4 w-4" /> Nueva Orden
                   </Button>
                 )}
               </div>
@@ -165,17 +216,17 @@ export default function Index() {
                       onDelete={handleDelete}
                       onStatusChange={handleStatusChange}
                       onReceipt={setReceiptItem}
-                      businessName={profile.businessName}
+                      businessName={bName}
                     />
                   </div>
                 </div>
 
-                <FinancialSummary items={items} />
+                <FinancialSummary items={equipmentList} />
 
-                {/* Daily Auto-Summary */}
+                {/* Daily Summary with Instant Calculation */}
                 <div className="bg-card rounded-xl border shadow-sm p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <Banknote className="h-5 w-5 text-status-ready" />
+                    <Zap className="h-5 w-5 text-status-ready" />
                     <h2 className="font-bold text-lg">Resumen del Día</h2>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -197,13 +248,13 @@ export default function Index() {
             )}
 
             {page === 'cash' && <CashRegister />}
-            {page === 'settings' && <BusinessProfileSettings profile={profile} onUpdate={updateProfile} />}
+            {page === 'settings' && <BusinessProfileSettings />}
+            {page === 'admin' && isAdmin && <AdminPanel />}
           </main>
         </div>
       </div>
 
-      {/* Modals */}
-      <EquipmentForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={handleSubmit} initialData={editingItem} />
+      <EquipmentForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={handleSubmit} initialData={editingItem ? itemToEquipment(editingItem) : undefined} />
       <ReceiptDialog open={!!receiptItem} onClose={() => setReceiptItem(null)} item={receiptItem} />
     </SidebarProvider>
   );
