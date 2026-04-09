@@ -1,60 +1,37 @@
 import { useState, useMemo } from 'react';
-import { CashEntry } from '@/types/equipment';
+import { useCashDB, CashEntryItem } from '@/hooks/useCashDB';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DollarSign, Plus, Trash2 } from 'lucide-react';
 
-const CASH_KEY = 'workshop-cash';
-
-function loadCash(): CashEntry[] {
-  try {
-    const data = localStorage.getItem(CASH_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch { return []; }
-}
-
-function saveCash(entries: CashEntry[]) {
-  localStorage.setItem(CASH_KEY, JSON.stringify(entries));
-}
-
 export function CashRegister() {
-  const [entries, setEntries] = useState<CashEntry[]>(loadCash);
+  const { entries, addEntry, deleteEntry } = useCashDB();
   const [showForm, setShowForm] = useState(false);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [form, setForm] = useState({ orderId: '', clientName: '', amount: '', concept: '' });
 
-  const filtered = useMemo(() => 
+  const filtered = useMemo(() =>
     entries.filter(e => e.date === filterDate).sort((a, b) => b.id - a.id),
     [entries, filterDate]
   );
 
-  const dayTotal = useMemo(() => 
+  const dayTotal = useMemo(() =>
     filtered.reduce((sum, e) => sum + e.amount, 0),
     [filtered]
   );
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newEntry: CashEntry = {
-      id: Date.now(),
+    await addEntry({
       date: filterDate,
       orderId: Number(form.orderId) || 0,
       clientName: form.clientName,
       amount: Number(form.amount) || 0,
       concept: form.concept,
-    };
-    const updated = [...entries, newEntry];
-    setEntries(updated);
-    saveCash(updated);
+    });
     setForm({ orderId: '', clientName: '', amount: '', concept: '' });
     setShowForm(false);
-  };
-
-  const handleDelete = (id: number) => {
-    const updated = entries.filter(e => e.id !== id);
-    setEntries(updated);
-    saveCash(updated);
   };
 
   return (
@@ -65,12 +42,7 @@ export function CashRegister() {
           <h2 className="font-bold text-lg">Caja del Día</h2>
         </div>
         <div className="flex items-center gap-3">
-          <Input
-            type="date"
-            value={filterDate}
-            onChange={e => setFilterDate(e.target.value)}
-            className="w-40 h-9 text-sm"
-          />
+          <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="w-40 h-9 text-sm" />
           <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1">
             <Plus className="h-3 w-3" /> Ingreso
           </Button>
@@ -113,7 +85,7 @@ export function CashRegister() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-status-ready">${entry.amount.toLocaleString()}</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(entry.id)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteEntry(entry.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>

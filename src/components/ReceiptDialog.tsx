@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Printer } from 'lucide-react';
+import { Printer, Share2 } from 'lucide-react';
 import { useRef } from 'react';
+import { openWhatsApp } from '@/lib/whatsapp';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ReceiptDialogProps {
   open: boolean;
@@ -14,50 +16,74 @@ interface ReceiptDialogProps {
 
 export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
+  const { profile } = useAuth();
 
   if (!item) return null;
 
-  const remaining = item.budget - item.deposit;
+  const remaining = (item.budget || 0) - (item.deposit || 0);
   const warrantyLabel = WARRANTY_OPTIONS.find(w => w.value === item.warranty)?.label ?? 'Sin garantía';
+  const bName = profile?.business_name || 'FullCell Service';
+  const bAddress = profile?.address ? `${profile.address}${profile.city ? `, ${profile.city}` : ''}` : '';
+  const bHours = profile?.business_hours || '';
 
   const handlePrint = () => {
-    const content = receiptRef.current;
-    if (!content) return;
     const win = window.open('', '_blank');
     if (!win) return;
     win.document.write(`
       <html><head><title>Recibo #${item.id}</title>
       <style>
-        body { font-family: 'Courier New', monospace; max-width: 400px; margin: 0 auto; padding: 20px; }
-        h1 { text-align: center; font-size: 18px; border-bottom: 2px dashed #000; padding-bottom: 10px; }
-        .row { display: flex; justify-content: space-between; padding: 4px 0; }
+        body { font-family: 'Courier New', monospace; max-width: 300px; margin: 0 auto; padding: 10px; font-size: 12px; }
+        h1 { text-align: center; font-size: 14px; border-bottom: 2px dashed #000; padding-bottom: 8px; margin-bottom: 8px; }
+        .row { display: flex; justify-content: space-between; padding: 2px 0; }
         .label { font-weight: bold; }
-        .divider { border-top: 1px dashed #000; margin: 10px 0; }
-        .total { font-size: 16px; font-weight: bold; }
-        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+        .divider { border-top: 1px dashed #000; margin: 6px 0; }
+        .total { font-size: 14px; font-weight: bold; }
+        .footer { text-align: center; margin-top: 12px; font-size: 10px; color: #666; }
+        .humidity { background: #fff3cd; padding: 4px; margin: 6px 0; border: 1px solid #ffc107; font-size: 11px; }
       </style></head><body>
-      <h1>🔧 ORDEN DE SERVICIO</h1>
+      <h1>🔧 ${bName}</h1>
+      ${bAddress ? `<div style="text-align:center;font-size:10px;margin-bottom:4px">${bAddress}</div>` : ''}
+      ${bHours ? `<div style="text-align:center;font-size:10px;margin-bottom:8px">🕐 ${bHours}</div>` : ''}
+      <div class="divider"></div>
       <div class="row"><span class="label">Orden:</span><span>#${item.id}</span></div>
       <div class="row"><span class="label">Fecha:</span><span>${item.dateIn}</span></div>
       <div class="divider"></div>
       <div class="row"><span class="label">Cliente:</span><span>${item.clientName}</span></div>
-      ${item.phone ? `<div class="row"><span class="label">Teléfono:</span><span>${item.phone}</span></div>` : ''}
+      ${item.phone ? `<div class="row"><span class="label">Tel:</span><span>${item.phone}</span></div>` : ''}
       <div class="row"><span class="label">Equipo:</span><span>${item.brand} ${item.model}</span></div>
       <div class="divider"></div>
       <div class="row"><span class="label">Problema:</span></div>
-      <div style="padding: 4px 0;">${item.problem}</div>
+      <div style="padding: 2px 0;">${item.problem}</div>
+      ${item.hasHumidity ? '<div class="humidity">⚠️ Equipo con evidencia de humedad/sulfato</div>' : ''}
       <div class="divider"></div>
-      <div class="row"><span class="label">Presupuesto:</span><span>$${item.budget.toLocaleString()}</span></div>
-      <div class="row"><span class="label">Seña:</span><span>$${item.deposit.toLocaleString()}</span></div>
+      <div class="row"><span class="label">Presupuesto:</span><span>$${(item.budget || 0).toLocaleString()}</span></div>
+      <div class="row"><span class="label">Seña:</span><span>$${(item.deposit || 0).toLocaleString()}</span></div>
       <div class="row total"><span>Saldo:</span><span>$${remaining.toLocaleString()}</span></div>
       ${item.dateEstimated ? `<div class="divider"></div><div class="row"><span class="label">Entrega est.:</span><span>${item.dateEstimated}</span></div>` : ''}
       <div class="row"><span class="label">Estado:</span><span>${item.status}</span></div>
       <div class="row"><span class="label">Garantía:</span><span>${warrantyLabel}</span></div>
-      <div class="footer">Gracias por confiar en nuestro servicio</div>
+      <div class="footer">Gracias por confiar en ${bName}</div>
       </body></html>
     `);
     win.document.close();
     win.print();
+  };
+
+  const handleShareWhatsApp = () => {
+    let msg = `📋 *Recibo de Servicio - ${bName}*\n`;
+    msg += `Orden: #${item.id}\nFecha: ${item.dateIn}\n`;
+    msg += `Cliente: ${item.clientName}\n`;
+    msg += `Equipo: ${item.brand} ${item.model}\n`;
+    msg += `Problema: ${item.problem}\n`;
+    if (item.hasHumidity) msg += `⚠️ Equipo con evidencia de humedad/sulfato\n`;
+    msg += `\nPresupuesto: $${(item.budget || 0).toLocaleString()}\n`;
+    msg += `Seña: $${(item.deposit || 0).toLocaleString()}\n`;
+    msg += `*Saldo: $${remaining.toLocaleString()}*\n`;
+    msg += `Estado: ${item.status}\nGarantía: ${warrantyLabel}\n`;
+    if (bAddress) msg += `\n📍 ${bAddress}`;
+    if (bHours) msg += `\n🕐 ${bHours}`;
+    const phone = item.phone || item.altPhone;
+    if (phone) openWhatsApp(phone, msg);
   };
 
   return (
@@ -68,10 +94,12 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
         </DialogHeader>
         <div ref={receiptRef} className="space-y-4 font-mono text-sm border rounded-lg p-5 bg-card">
           <div className="text-center border-b border-dashed pb-3">
-            <p className="text-lg font-bold">🔧 ORDEN DE SERVICIO</p>
-            <p className="text-xs text-muted-foreground">Orden #{item.id} · {item.dateIn}</p>
+            <p className="text-lg font-bold">🔧 {bName}</p>
+            {bAddress && <p className="text-[10px] text-muted-foreground">{bAddress}</p>}
+            {bHours && <p className="text-[10px] text-muted-foreground">🕐 {bHours}</p>}
+            <p className="text-xs text-muted-foreground mt-1">Orden #{item.id} · {item.dateIn}</p>
           </div>
-          
+
           <div className="space-y-1.5">
             <div className="flex justify-between"><span className="text-muted-foreground">Cliente:</span><span className="font-semibold">{item.clientName}</span></div>
             {item.phone && <div className="flex justify-between"><span className="text-muted-foreground">Tel:</span><span>{item.phone}</span></div>}
@@ -83,9 +111,15 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
             <p>{item.problem}</p>
           </div>
 
+          {item.hasHumidity && (
+            <div className="bg-status-waiting/10 border border-status-waiting/30 rounded-lg p-2 text-xs font-semibold text-status-waiting">
+              ⚠️ Equipo con evidencia de humedad/sulfato
+            </div>
+          )}
+
           <div className="border-t border-dashed pt-3 space-y-1.5">
-            <div className="flex justify-between"><span className="text-muted-foreground">Presupuesto:</span><span>${item.budget.toLocaleString()}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Seña:</span><span>${item.deposit.toLocaleString()}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Presupuesto:</span><span>${(item.budget || 0).toLocaleString()}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Seña:</span><span>${(item.deposit || 0).toLocaleString()}</span></div>
             <div className="flex justify-between font-bold text-base border-t pt-2"><span>Saldo:</span><span>${remaining.toLocaleString()}</span></div>
           </div>
 
@@ -100,15 +134,19 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
           </div>
 
           <div className="text-center text-xs text-muted-foreground pt-2">
-            Gracias por confiar en nuestro servicio
+            Gracias por confiar en {bName}
           </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
+          <Button variant="outline" className="gap-2" onClick={handleShareWhatsApp}>
+            <Share2 className="h-4 w-4" />
+            WhatsApp
+          </Button>
           <Button onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
-            Imprimir / PDF
+            Imprimir
           </Button>
         </div>
       </DialogContent>
