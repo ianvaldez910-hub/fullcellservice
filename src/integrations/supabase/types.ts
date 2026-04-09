@@ -14,16 +14,200 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cash_entries: {
+        Row: {
+          amount: number
+          client_name: string
+          concept: string | null
+          created_at: string
+          date: string
+          id: number
+          order_id: number | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          client_name?: string
+          concept?: string | null
+          created_at?: string
+          date?: string
+          id?: number
+          order_id?: number | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          client_name?: string
+          concept?: string | null
+          created_at?: string
+          date?: string
+          id?: number
+          order_id?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      equipment: {
+        Row: {
+          alt_phone: string | null
+          brand: string
+          budget: number
+          client_name: string
+          created_at: string
+          date_estimated: string | null
+          date_in: string
+          deposit: number
+          has_humidity: boolean
+          id: number
+          images: string[] | null
+          internal_notes: string | null
+          model: string
+          order_number: number
+          phone: string | null
+          problem: string
+          security_pattern: number[] | null
+          security_text: string | null
+          status: Database["public"]["Enums"]["equipment_status"]
+          updated_at: string
+          user_id: string
+          warranty: number
+        }
+        Insert: {
+          alt_phone?: string | null
+          brand: string
+          budget?: number
+          client_name: string
+          created_at?: string
+          date_estimated?: string | null
+          date_in?: string
+          deposit?: number
+          has_humidity?: boolean
+          id?: number
+          images?: string[] | null
+          internal_notes?: string | null
+          model: string
+          order_number: number
+          phone?: string | null
+          problem?: string
+          security_pattern?: number[] | null
+          security_text?: string | null
+          status?: Database["public"]["Enums"]["equipment_status"]
+          updated_at?: string
+          user_id: string
+          warranty?: number
+        }
+        Update: {
+          alt_phone?: string | null
+          brand?: string
+          budget?: number
+          client_name?: string
+          created_at?: string
+          date_estimated?: string | null
+          date_in?: string
+          deposit?: number
+          has_humidity?: boolean
+          id?: number
+          images?: string[] | null
+          internal_notes?: string | null
+          model?: string
+          order_number?: number
+          phone?: string | null
+          problem?: string
+          security_pattern?: number[] | null
+          security_text?: string | null
+          status?: Database["public"]["Enums"]["equipment_status"]
+          updated_at?: string
+          user_id?: string
+          warranty?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          business_hours: string | null
+          business_name: string
+          city: string | null
+          created_at: string
+          email: string | null
+          id: string
+          license_status: Database["public"]["Enums"]["license_status"]
+          trial_ends_at: string
+          updated_at: string
+          user_id: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          address?: string | null
+          business_hours?: string | null
+          business_name?: string
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          license_status?: Database["public"]["Enums"]["license_status"]
+          trial_ends_at?: string
+          updated_at?: string
+          user_id: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_hours?: string | null
+          business_name?: string
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          license_status?: Database["public"]["Enums"]["license_status"]
+          trial_ends_at?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      next_order_number: { Args: { _user_id: string }; Returns: number }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      equipment_status:
+        | "Pendiente"
+        | "En Reparación"
+        | "Esperando Repuesto"
+        | "Listo"
+        | "Entregado"
+      license_status: "trial" | "active" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +334,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      equipment_status: [
+        "Pendiente",
+        "En Reparación",
+        "Esperando Repuesto",
+        "Listo",
+        "Entregado",
+      ],
+      license_status: ["trial", "active", "inactive"],
+    },
   },
 } as const
