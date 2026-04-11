@@ -112,6 +112,11 @@ export function useEquipmentDB() {
   }, [user, fetchItems]);
 
   const updateEquipment = useCallback(async (id: number, data: Partial<EquipmentItem>) => {
+    if (!user) return { error: new Error('No user') };
+
+    // Get current item to detect status change
+    const currentItem = items.find(i => i.id === id);
+
     const update: any = {};
     if (data.clientName !== undefined) update.client_name = data.clientName;
     if (data.phone !== undefined) update.phone = data.phone;
@@ -132,9 +137,26 @@ export function useEquipmentDB() {
     if (data.hasHumidity !== undefined) update.has_humidity = data.hasHumidity;
 
     const { error } = await supabase.from('equipment').update(update).eq('id', id);
-    if (!error) await fetchItems();
+    if (!error) {
+      // Auto-register balance as cash entry when status changes to Entregado
+      if (data.status === 'Entregado' && currentItem && currentItem.status !== 'Entregado') {
+        const balance = (currentItem.budget || 0) - (currentItem.deposit || 0);
+        if (balance > 0) {
+          const today = new Date().toISOString().split('T')[0];
+          await supabase.from('cash_entries').insert({
+            user_id: user.id,
+            date: today,
+            order_id: currentItem.orderNumber,
+            client_name: currentItem.clientName,
+            amount: balance,
+            concept: `Saldo - ${currentItem.brand} ${currentItem.model}`,
+          });
+        }
+      }
+      await fetchItems();
+    }
     return { error };
-  }, [fetchItems]);
+  }, [user, items, fetchItems]);
 
   const deleteEquipment = useCallback(async (id: number) => {
     const { error } = await supabase.from('equipment').delete().eq('id', id);
