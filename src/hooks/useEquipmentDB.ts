@@ -94,7 +94,20 @@ export function useEquipmentDB() {
       images: data.images,
       has_humidity: data.hasHumidity,
     });
-    if (!error) await fetchItems();
+    if (!error) {
+      // Auto-register deposit as cash entry if deposit > 0
+      if (data.deposit > 0) {
+        await supabase.from('cash_entries').insert({
+          user_id: user.id,
+          date: data.dateIn,
+          order_id: nextNum || 1,
+          client_name: data.clientName,
+          amount: data.deposit,
+          concept: `Seña - ${data.brand} ${data.model}`,
+        });
+      }
+      await fetchItems();
+    }
     return { error };
   }, [user, fetchItems]);
 
