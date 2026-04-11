@@ -41,48 +41,70 @@ export function CashRegister() {
   const handleSync = useCallback(async () => {
     setSyncing(true);
     try {
-      // Find delivered orders for the selected date
-      const deliveredToday = equipmentItems.filter(
-        item => item.status === 'Entregado' && item.dateIn === filterDate
+      let totalSynced = 0;
+      let countSynced = 0;
+
+      // --- Sync Señas: orders created on filterDate with deposit > 0 ---
+      const createdToday = equipmentItems.filter(
+        item => item.dateIn === filterDate && (item.deposit || 0) > 0
       );
+      const existingSeñas = new Set(
+        entries.filter(e => e.concept.startsWith('Seña -')).map(e => e.orderId)
+      );
+      const señasToSync = createdToday.filter(item => !existingSeñas.has(item.orderNumber));
 
-      if (deliveredToday.length === 0) {
-        toast.info('No hay órdenes entregadas para esta fecha.');
-        setSyncing(false);
-        return;
-      }
-
-      // Filter out orders already synced (by order number in existing entries)
-      const existingOrderIds = new Set(filtered.map(e => e.orderId));
-      const toSync = deliveredToday.filter(item => !existingOrderIds.has(item.orderNumber));
-
-      if (toSync.length === 0) {
-        toast.info('Todas las órdenes de hoy ya están registradas en caja.');
-        setSyncing(false);
-        return;
-      }
-
-      // Add each delivered order as a cash entry
-      for (const item of toSync) {
+      for (const item of señasToSync) {
         await addEntry({
           date: filterDate,
           orderId: item.orderNumber,
           clientName: item.clientName,
-          amount: (item.budget || 0) - (item.deposit || 0),
-          concept: `Entrega - ${item.brand} ${item.model}`,
+          amount: item.deposit || 0,
+          concept: `Seña - ${item.brand} ${item.model}`,
         });
+        totalSynced += item.deposit || 0;
+        countSynced++;
       }
 
-      const totalSynced = toSync.reduce((s, i) => s + ((i.budget || 0) - (i.deposit || 0)), 0);
-      toast.success(
-        `Se han sumado ${toSync.length} orden${toSync.length !== 1 ? 'es' : ''} exitosamente ($${totalSynced.toLocaleString()})`
+      // --- Sync Saldos: orders delivered on filterDate ---
+      const deliveredToday = equipmentItems.filter(
+        item => item.status === 'Entregado'
       );
+      // We check all entries (not just filtered by date) to find existing saldo entries for these orders
+      const existingSaldos = new Set(
+        entries.filter(e => e.concept.startsWith('Saldo -')).map(e => e.orderId)
+      );
+      const saldosToSync = deliveredToday.filter(item => {
+        if (existingSaldos.has(item.orderNumber)) return false;
+        const balance = (item.budget || 0) - (item.deposit || 0);
+        return balance > 0;
+      });
+
+      for (const item of saldosToSync) {
+        const balance = (item.budget || 0) - (item.deposit || 0);
+        await addEntry({
+          date: filterDate,
+          orderId: item.orderNumber,
+          clientName: item.clientName,
+          amount: balance,
+          concept: `Saldo - ${item.brand} ${item.model}`,
+        });
+        totalSynced += balance;
+        countSynced++;
+      }
+
+      if (countSynced === 0) {
+        toast.info('No hay movimientos nuevos para sincronizar.');
+      } else {
+        toast.success(
+          `Se sincronizaron ${countSynced} movimiento${countSynced !== 1 ? 's' : ''} ($${totalSynced.toLocaleString()})`
+        );
+      }
     } catch {
-      toast.error('Error al sincronizar órdenes.');
+      toast.error('Error al sincronizar.');
     } finally {
       setSyncing(false);
     }
-  }, [equipmentItems, filterDate, filtered, addEntry]);
+  }, [equipmentItems, filterDate, entries, addEntry]);
 
   return (
     <div className="bg-card rounded-xl border shadow-sm">
