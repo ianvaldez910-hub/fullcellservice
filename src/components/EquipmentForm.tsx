@@ -162,11 +162,11 @@ export function EquipmentForm({ open, onClose, onSubmit, initialData }: Equipmen
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Presupuesto ($)</Label>
-              <Input type="number" min={0} value={form.budget} onChange={e => handleChange('budget', Number(e.target.value))} />
+              <Input type="number" min={0} value={form.budget || ''} onChange={e => handleChange('budget', Number(e.target.value))} onFocus={e => { if (Number(e.target.value) === 0) e.target.value = ''; }} />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seña ($)</Label>
-              <Input type="number" min={0} value={form.deposit} onChange={e => handleChange('deposit', Number(e.target.value))} />
+              <Input type="number" min={0} value={form.deposit || ''} onChange={e => handleChange('deposit', Number(e.target.value))} onFocus={e => { if (Number(e.target.value) === 0) e.target.value = ''; }} />
             </div>
           </div>
 

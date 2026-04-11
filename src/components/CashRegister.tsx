@@ -115,7 +115,7 @@ export function CashRegister() {
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Monto ($)</Label>
-            <Input type="number" min={0} placeholder="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} className="h-9" required />
+            <Input type="number" min={0} placeholder="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} onFocus={e => { if (e.target.value === '0') e.target.value = ''; }} className="h-9" required />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Concepto</Label>
