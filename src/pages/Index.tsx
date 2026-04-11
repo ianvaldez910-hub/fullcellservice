@@ -249,7 +249,7 @@ export default function Index() {
 
             {page === 'cash' && <CashRegister />}
             {page === 'settings' && <BusinessProfileSettings />}
-            {page === 'admin' && isAdmin && <AdminPanel />}
+            {page === 'admin' && (isAdmin ? <AdminPanel /> : (() => { window.location.href = '/unauthorized'; return null; })())}
           </main>
         </div>
       </div>

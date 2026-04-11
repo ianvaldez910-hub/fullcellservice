@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wrench, LogIn, UserPlus } from 'lucide-react';
+import { Wrench, LogIn, UserPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Auth() {
@@ -50,6 +50,7 @@ export default function Auth() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
           <div className="space-y-2">
@@ -61,11 +62,26 @@ export default function Auth() {
               onChange={e => setPassword(e.target.value)}
               required
               minLength={6}
+              disabled={loading}
             />
           </div>
           <Button type="submit" className="w-full gap-2" disabled={loading}>
-            {isLogin ? <LogIn className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-            {loading ? 'Cargando...' : isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Cargando...
+              </>
+            ) : isLogin ? (
+              <>
+                <LogIn className="h-4 w-4" />
+                Iniciar Sesión
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4" />
+                Registrarse
+              </>
+            )}
           </Button>
         </form>
 
@@ -75,6 +91,7 @@ export default function Auth() {
             type="button"
             onClick={() => setIsLogin(!isLogin)}
             className="text-primary font-medium hover:underline"
+            disabled={loading}
           >
             {isLogin ? 'Registrate gratis' : 'Iniciá sesión'}
           </button>

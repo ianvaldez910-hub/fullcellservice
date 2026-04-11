@@ -1,15 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useCashDB, CashEntryItem } from '@/hooks/useCashDB';
+import { useEquipmentDB } from '@/hooks/useEquipmentDB';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DollarSign, Plus, Trash2 } from 'lucide-react';
+import { DollarSign, Plus, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function CashRegister() {
   const { entries, addEntry, deleteEntry } = useCashDB();
+  const { items: equipmentItems } = useEquipmentDB();
   const [showForm, setShowForm] = useState(false);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [form, setForm] = useState({ orderId: '', clientName: '', amount: '', concept: '' });
+  const [syncing, setSyncing] = useState(false);
 
   const filtered = useMemo(() =>
     entries.filter(e => e.date === filterDate).sort((a, b) => b.id - a.id),
@@ -34,6 +38,52 @@ export function CashRegister() {
     setShowForm(false);
   };
 
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    try {
+      // Find delivered orders for the selected date
+      const deliveredToday = equipmentItems.filter(
+        item => item.status === 'Entregado' && item.dateIn === filterDate
+      );
+
+      if (deliveredToday.length === 0) {
+        toast.info('No hay órdenes entregadas para esta fecha.');
+        setSyncing(false);
+        return;
+      }
+
+      // Filter out orders already synced (by order number in existing entries)
+      const existingOrderIds = new Set(filtered.map(e => e.orderId));
+      const toSync = deliveredToday.filter(item => !existingOrderIds.has(item.orderNumber));
+
+      if (toSync.length === 0) {
+        toast.info('Todas las órdenes de hoy ya están registradas en caja.');
+        setSyncing(false);
+        return;
+      }
+
+      // Add each delivered order as a cash entry
+      for (const item of toSync) {
+        await addEntry({
+          date: filterDate,
+          orderId: item.orderNumber,
+          clientName: item.clientName,
+          amount: (item.budget || 0) - (item.deposit || 0),
+          concept: `Entrega - ${item.brand} ${item.model}`,
+        });
+      }
+
+      const totalSynced = toSync.reduce((s, i) => s + ((i.budget || 0) - (i.deposit || 0)), 0);
+      toast.success(
+        `Se han sumado ${toSync.length} orden${toSync.length !== 1 ? 'es' : ''} exitosamente ($${totalSynced.toLocaleString()})`
+      );
+    } catch {
+      toast.error('Error al sincronizar órdenes.');
+    } finally {
+      setSyncing(false);
+    }
+  }, [equipmentItems, filterDate, filtered, addEntry]);
+
   return (
     <div className="bg-card rounded-xl border shadow-sm">
       <div className="p-4 border-b flex items-center justify-between flex-wrap gap-3">
@@ -43,6 +93,10 @@ export function CashRegister() {
         </div>
         <div className="flex items-center gap-3">
           <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="w-40 h-9 text-sm" />
+          <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing} className="gap-1">
+            {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            Sincronizar
+          </Button>
           <Button size="sm" onClick={() => setShowForm(!showForm)} className="gap-1">
             <Plus className="h-3 w-3" /> Ingreso
           </Button>
