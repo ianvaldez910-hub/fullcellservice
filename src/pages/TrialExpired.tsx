@@ -20,7 +20,7 @@ export default function TrialExpired() {
         <div className="flex flex-col gap-3">
           <Button
             className="gap-2 bg-[#25D366] hover:bg-[#1da851] text-white w-full"
-            onClick={() => window.open('https://wa.me/5493873302061?text=Hola%2C%20mi%20licencia%20de%20FullCell%20Service%20ha%20vencido.%20Solicito%20informaci%C3%B3n%20para%20renovar%20mi%20plan%20de%20acceso.', '_blank')}
+            onClick={() => window.open('https://wa.me/543873695394?text=Hola%2C%20mi%20licencia%20de%20FullCell%20Service%20ha%20vencido.%20Solicito%20informaci%C3%B3n%20para%20renovar%20mi%20plan%20de%20acceso.', '_blank')}
           >
             <MessageCircle className="h-4 w-4" />
             Contactar con Administración
