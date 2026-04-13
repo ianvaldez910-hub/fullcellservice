@@ -20,7 +20,7 @@ export default function TrialExpired() {
         <div className="flex flex-col gap-3">
           <Button
             className="gap-2"
-            onClick={() => window.open('https://wa.me/5491155667788?text=Hola%20Ian%2C%20quiero%20activar%20mi%20licencia%20de%20FullCell%20Service', '_blank')}
+            onClick={() => window.open('https://wa.me/543873695394?text=Hola%2C%20quiero%20renovar%20mi%20licencia%20de%20FullCell%20Service', '_blank')}
           >
             <MessageCircle className="h-4 w-4" />
             Contactar a Ian Valdez
