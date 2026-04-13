@@ -168,6 +168,11 @@ export default function Index() {
         </Sidebar>
 
         <div className="flex-1 flex flex-col">
+          {profile?.license_status === 'trial' && trialDaysLeft > 0 && (
+            <div className="bg-yellow-500/15 border-b border-yellow-500/30 text-yellow-700 dark:text-yellow-400 text-center text-sm py-2 px-4 font-medium">
+              ⏳ Tu prueba gratuita vence en {trialDaysLeft} día{trialDaysLeft !== 1 ? 's' : ''}. Contactá al administrador para activar tu licencia.
+            </div>
+          )}
           <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -181,11 +186,6 @@ export default function Index() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {profile?.license_status === 'trial' && trialDaysLeft > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    Prueba: {trialDaysLeft} día{trialDaysLeft !== 1 ? 's' : ''}
-                  </Badge>
-                )}
                 <ThemeToggle />
                 {page === 'dashboard' && (
                   <Button onClick={handleAdd} className="gap-2">
