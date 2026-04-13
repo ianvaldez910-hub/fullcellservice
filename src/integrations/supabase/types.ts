@@ -198,6 +198,10 @@ export type Database = {
         Returns: boolean
       }
       next_order_number: { Args: { _user_id: string }; Returns: number }
+      renew_license: {
+        Args: { _months: number; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
