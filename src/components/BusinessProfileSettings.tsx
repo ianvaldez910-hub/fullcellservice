@@ -105,6 +105,18 @@ export function BusinessProfileSettings() {
         </div>
 
         <Button onClick={handleSave} className="w-full">Guardar Cambios</Button>
+
+        <div className="mt-6 rounded-lg border border-dashed p-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Renovar Licencia</p>
+          <p className="text-xs text-muted-foreground">¿Necesitás extender tu plan? Contactá con administración antes de que venza tu acceso.</p>
+          <Button
+            className="w-full gap-2 bg-[#25D366] hover:bg-[#1da851] text-white"
+            onClick={() => window.open('https://wa.me/5493873302061?text=Hola%2C%20mi%20licencia%20de%20FullCell%20Service%20ha%20vencido.%20Solicito%20informaci%C3%B3n%20para%20renovar%20mi%20plan%20de%20acceso.', '_blank')}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Contactar con Administración
+          </Button>
+        </div>
       </div>
     </div>
   );
