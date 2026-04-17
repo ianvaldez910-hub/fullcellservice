@@ -142,7 +142,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isLicenseValid = (() => {
     if (!profile) return false;
-    if (profile.license_status === 'active') return true;
+    if (isAdmin) return true;
+    const planExpiry = (profile as any).fecha_vencimiento_plan;
+    if (profile.license_status === 'active') {
+      // If a plan expiry exists, enforce it
+      if (planExpiry) return new Date(planExpiry) > new Date();
+      return true;
+    }
     if (profile.license_status === 'inactive') return false;
     // trial
     return new Date(profile.trial_ends_at) > new Date();
@@ -150,7 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const trialDaysLeft = (() => {
     if (!profile) return 0;
-    const diff = new Date(profile.trial_ends_at).getTime() - Date.now();
+    const planExpiry = (profile as any).fecha_vencimiento_plan;
+    const target = profile.license_status === 'active' && planExpiry
+      ? new Date(planExpiry).getTime()
+      : new Date(profile.trial_ends_at).getTime();
+    const diff = target - Date.now();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   })();
 
