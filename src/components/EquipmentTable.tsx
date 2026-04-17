@@ -51,7 +51,7 @@ export function EquipmentTable({ items, onEdit, onDelete, onStatusChange, onRece
         </thead>
         <tbody>
           {items.map(item => {
-            const config = STATUS_CONFIG[item.status];
+            const config = STATUS_CONFIG[item.status] ?? STATUS_CONFIG['Pendiente'];
             const isPendingLong = item.status === 'Pendiente' && daysSinceDate(item.dateIn) > 3;
             return (
               <tr key={item.id} className={`border-b border-border/50 hover:bg-muted/50 transition-colors ${isPendingLong ? 'bg-destructive/10 hover:bg-destructive/15' : ''}`}>

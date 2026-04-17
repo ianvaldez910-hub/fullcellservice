@@ -90,36 +90,49 @@ export default function Index() {
   };
 
   const handleSubmit = async (data: Omit<Equipment, 'id'>) => {
-    if (editingItem) {
-      await updateEquipment(editingItem.id, {
-        clientName: data.clientName, phone: data.phone, altPhone: data.altPhone,
-        brand: data.brand, model: data.model, security: data.security,
-        securityPattern: data.securityPattern, dateIn: data.dateIn,
-        dateEstimated: data.dateEstimated, problem: data.problem,
-        budget: data.budget, deposit: data.deposit, status: data.status,
-        warranty: data.warranty, internalNotes: data.internalNotes,
-        images: data.images, hasHumidity: data.hasHumidity,
-      });
-      toast.success(`Orden #${editingItem.orderNumber} actualizada`);
-    } else {
-      await addEquipment(data);
-      toast.success('Nueva orden creada');
+    try {
+      if (editingItem) {
+        const res = await updateEquipment(editingItem.id, {
+          clientName: data.clientName, phone: data.phone, altPhone: data.altPhone,
+          brand: data.brand, model: data.model, security: data.security,
+          securityPattern: data.securityPattern, dateIn: data.dateIn,
+          dateEstimated: data.dateEstimated, problem: data.problem,
+          budget: Number(data.budget) || 0, deposit: Number(data.deposit) || 0, status: data.status,
+          warranty: data.warranty, internalNotes: data.internalNotes,
+          images: data.images, hasHumidity: data.hasHumidity,
+        });
+        if (res?.error) throw res.error;
+        toast.success(`Orden #${editingItem.orderNumber} actualizada`);
+      } else {
+        const res = await addEquipment({ ...data, budget: Number(data.budget) || 0, deposit: Number(data.deposit) || 0 });
+        if (res?.error) throw res.error;
+        toast.success('Nueva orden creada');
+      }
+    } catch (err: any) {
+      console.error('handleSubmit error:', err);
+      toast.error(err?.message || 'Error al guardar la orden');
     }
   };
 
   const handleDelete = async (id: number) => {
     const dbItem = items.find(i => i.orderNumber === id);
     if (dbItem && confirm(`¿Eliminar la orden #${id}?`)) {
-      await deleteEquipment(dbItem.id);
+      const res = await deleteEquipment(dbItem.id);
+      if (res?.error) { toast.error('No se pudo eliminar'); return; }
       toast.success(`Orden #${id} eliminada`);
     }
   };
 
   const handleStatusChange = async (id: number, status: EquipmentStatus) => {
     const dbItem = items.find(i => i.orderNumber === id);
-    if (dbItem) {
-      await updateEquipment(dbItem.id, { status });
+    if (!dbItem) return;
+    try {
+      const res = await updateEquipment(dbItem.id, { status });
+      if (res?.error) throw res.error;
       toast.success(`Estado actualizado a "${status}"`);
+    } catch (err: any) {
+      console.error('handleStatusChange error:', err);
+      toast.error(err?.message || 'No se pudo actualizar el estado');
     }
   };
 
