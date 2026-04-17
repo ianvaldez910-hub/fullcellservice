@@ -130,8 +130,11 @@ export type Database = {
           city: string | null
           created_at: string
           email: string | null
+          fecha_inicio_plan: string | null
+          fecha_vencimiento_plan: string | null
           id: string
           license_status: Database["public"]["Enums"]["license_status"]
+          plan_activo: string | null
           trial_ends_at: string
           updated_at: string
           user_id: string
@@ -144,8 +147,11 @@ export type Database = {
           city?: string | null
           created_at?: string
           email?: string | null
+          fecha_inicio_plan?: string | null
+          fecha_vencimiento_plan?: string | null
           id?: string
           license_status?: Database["public"]["Enums"]["license_status"]
+          plan_activo?: string | null
           trial_ends_at?: string
           updated_at?: string
           user_id: string
@@ -158,8 +164,11 @@ export type Database = {
           city?: string | null
           created_at?: string
           email?: string | null
+          fecha_inicio_plan?: string | null
+          fecha_vencimiento_plan?: string | null
           id?: string
           license_status?: Database["public"]["Enums"]["license_status"]
+          plan_activo?: string | null
           trial_ends_at?: string
           updated_at?: string
           user_id?: string
@@ -190,6 +199,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_plan: {
+        Args: { _months: number; _user_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
