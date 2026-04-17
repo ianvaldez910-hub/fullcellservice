@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Equipment, STATUS_OPTIONS, EquipmentStatus, WARRANTY_OPTIONS, WarrantyDays } from '@/types/equipment';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PatternDrawer } from '@/components/PatternDrawer';
@@ -26,7 +26,7 @@ export function EquipmentForm({ open, onClose, onSubmit, initialData }: Equipmen
   const today = new Date().toISOString().split('T')[0];
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState({
+  const buildInitial = () => ({
     clientName: initialData?.clientName ?? '',
     phone: initialData?.phone ?? '',
     altPhone: initialData?.altPhone ?? '',
@@ -45,6 +45,14 @@ export function EquipmentForm({ open, onClose, onSubmit, initialData }: Equipmen
     images: initialData?.images ?? [] as string[],
     hasHumidity: initialData?.hasHumidity ?? false,
   });
+
+  const [form, setForm] = useState(buildInitial);
+
+  // Re-sync form when opening with a different item (bidirectional binding)
+  useEffect(() => {
+    if (open) setForm(buildInitial());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialData?.id]);
 
   const handleChange = (field: string, value: string | number | number[] | string[] | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -67,7 +75,7 @@ export function EquipmentForm({ open, onClose, onSubmit, initialData }: Equipmen
     setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.phone && !validateArgPhone(form.phone)) {
       alert('El teléfono principal no tiene un formato válido (ej: 1155667788)');
@@ -77,8 +85,19 @@ export function EquipmentForm({ open, onClose, onSubmit, initialData }: Equipmen
       alert('El teléfono alternativo no tiene un formato válido');
       return;
     }
-    onSubmit(form);
-    onClose();
+    try {
+      // Ensure numeric fallbacks before submitting
+      const safeForm = {
+        ...form,
+        budget: Number(form.budget) || 0,
+        deposit: Number(form.deposit) || 0,
+      };
+      await onSubmit(safeForm);
+      onClose();
+    } catch (err) {
+      console.error('Error submitting equipment form:', err);
+      alert('No se pudo guardar. Intentá nuevamente.');
+    }
   };
 
   return (
