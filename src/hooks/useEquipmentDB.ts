@@ -140,17 +140,23 @@ export function useEquipmentDB() {
     if (!error) {
       // Auto-register balance as cash entry when status changes to Entregado
       if (data.status === 'Entregado' && currentItem && currentItem.status !== 'Entregado') {
-        const balance = (currentItem.budget || 0) - (currentItem.deposit || 0);
+        const budget = Number(currentItem.budget) || 0;
+        const deposit = Number(currentItem.deposit) || 0;
+        const balance = budget - deposit;
         if (balance > 0) {
           const today = new Date().toISOString().split('T')[0];
-          await supabase.from('cash_entries').insert({
-            user_id: user.id,
-            date: today,
-            order_id: currentItem.orderNumber,
-            client_name: currentItem.clientName,
-            amount: balance,
-            concept: `Saldo - ${currentItem.brand} ${currentItem.model}`,
-          });
+          try {
+            await supabase.from('cash_entries').insert({
+              user_id: user.id,
+              date: today,
+              order_id: currentItem.orderNumber,
+              client_name: currentItem.clientName || '',
+              amount: balance,
+              concept: `Saldo - ${currentItem.brand || ''} ${currentItem.model || ''}`.trim(),
+            });
+          } catch (e) {
+            console.error('Failed to auto-register cash entry:', e);
+          }
         }
       }
       await fetchItems();
