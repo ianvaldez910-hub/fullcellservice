@@ -29,6 +29,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
 
+  const clearAuthState = useCallback(() => {
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setIsAdmin(false);
+  }, []);
+
+  const recoverFromAuthError = useCallback(async (error: unknown) => {
+    console.error('Error restoring auth session:', error);
+    await supabase.auth.signOut({ scope: 'local' });
+    clearAuthState();
+  }, [clearAuthState]);
+
   const fetchProfile = useCallback(async (userId: string) => {
     setProfileLoading(true);
     try {
@@ -69,34 +82,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           // Use setTimeout to avoid deadlock with Supabase auth
           setTimeout(() => {
-            if (mounted) fetchProfile(session.user.id);
+            if (!mounted) return;
+            fetchProfile(session.user.id)
+              .catch(recoverFromAuthError)
+              .finally(() => {
+                if (mounted) setLoading(false);
+              });
           }, 0);
         } else {
-          setProfile(null);
-          setIsAdmin(false);
+          clearAuthState();
+          setLoading(false);
         }
       }
     );
 
     // Then restore session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id).finally(() => {
-          if (mounted) setLoading(false);
-        });
-      } else {
-        setLoading(false);
-      }
-    });
+    supabase.auth.getSession()
+      .then(async ({ data: { session }, error }) => {
+        if (error) throw error;
+        if (!mounted) return;
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          clearAuthState();
+        }
+      })
+      .catch(recoverFromAuthError)
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [clearAuthState, fetchProfile, recoverFromAuthError]);
 
   const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({
