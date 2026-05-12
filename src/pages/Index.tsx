@@ -10,6 +10,7 @@ import { CashRegister } from '@/components/CashRegister';
 import { FinancialSummary } from '@/components/FinancialSummary';
 import { BusinessProfileSettings } from '@/components/BusinessProfileSettings';
 import { AdminPanel } from '@/components/AdminPanel';
+import { CursoPanel } from '@/components/CursoPanel';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,10 +20,10 @@ import {
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarProvider, SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Plus, Search, Wrench, LayoutDashboard, Settings, Banknote, Shield, LogOut, Zap } from 'lucide-react';
+import { Plus, Search, Wrench, LayoutDashboard, Settings, Banknote, Shield, LogOut, Zap, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Page = 'dashboard' | 'settings' | 'cash' | 'admin';
+type Page = 'dashboard' | 'settings' | 'cash' | 'admin' | 'curso';
 
 function itemToEquipment(item: EquipmentItem): Equipment {
   return {
@@ -143,6 +144,7 @@ export default function Index() {
     { title: 'Caja del Día', page: 'cash' as Page, icon: Banknote },
     { title: 'Ajustes', page: 'settings' as Page, icon: Settings },
     ...(isAdmin ? [{ title: 'Administración', page: 'admin' as Page, icon: Shield }] : []),
+    ...(isAdmin ? [{ title: 'Curso', page: 'curso' as Page, icon: GraduationCap }] : []),
   ];
 
   return (
@@ -263,6 +265,7 @@ export default function Index() {
             {page === 'cash' && <CashRegister />}
             {page === 'settings' && <BusinessProfileSettings />}
             {page === 'admin' && (isAdmin ? <AdminPanel /> : (() => { window.location.href = '/unauthorized'; return null; })())}
+            {page === 'curso' && (isAdmin ? <CursoPanel /> : (() => { window.location.href = '/unauthorized'; return null; })())}
           </main>
         </div>
       </div>
