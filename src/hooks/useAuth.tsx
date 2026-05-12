@@ -164,8 +164,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   })();
 
-  // Show loading while initial session is being restored OR profile is loading for first time
-  const isLoading = loading || (!!user && profileLoading && !profile);
+  // Only block on initial session restore. Profile load happens in background
+  // so the UI never gets stuck on a white/loading screen.
+  const isLoading = loading;
 
   return (
     <AuthContext.Provider value={{
