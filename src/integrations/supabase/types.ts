@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      course_students: {
+        Row: {
+          apellido: string
+          created_at: string
+          created_by: string | null
+          estado_pago: string
+          fecha_registro: string
+          id: string
+          nombre: string
+          telefono: string
+          updated_at: string
+        }
+        Insert: {
+          apellido?: string
+          created_at?: string
+          created_by?: string | null
+          estado_pago?: string
+          fecha_registro?: string
+          id?: string
+          nombre: string
+          telefono?: string
+          updated_at?: string
+        }
+        Update: {
+          apellido?: string
+          created_at?: string
+          created_by?: string | null
+          estado_pago?: string
+          fecha_registro?: string
+          id?: string
+          nombre?: string
+          telefono?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           alt_phone: string | null
