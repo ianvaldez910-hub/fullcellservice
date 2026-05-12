@@ -31,24 +31,27 @@ function AppRoutes() {
 
   if (!user) return <Auth />;
 
-  // Plan expired check (admins bypass)
-  const planExpiry = (profile as any)?.fecha_vencimiento_plan;
-  const planExpired =
-    !isAdmin &&
-    profile?.license_status === 'active' &&
-    planExpiry &&
-    new Date(planExpiry) < new Date();
+  // Wait until profile loads before doing license/plan gating, so we never
+  // bounce a valid user (especially admins) to TrialExpired/unauthorized
+  // because of an empty profile during initial render.
+  if (profile && !isAdmin) {
+    const planExpiry = (profile as any)?.fecha_vencimiento_plan;
+    const planExpired =
+      profile.license_status === 'active' &&
+      planExpiry &&
+      new Date(planExpiry) < new Date();
 
-  if (planExpired) {
-    return (
-      <Routes>
-        <Route path="*" element={<Navigate to="/unauthorized?reason=plan-expired" replace />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
-      </Routes>
-    );
+    if (planExpired) {
+      return (
+        <Routes>
+          <Route path="*" element={<Navigate to="/unauthorized?reason=plan-expired" replace />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+        </Routes>
+      );
+    }
+
+    if (!isLicenseValid) return <TrialExpired />;
   }
-
-  if (!isLicenseValid) return <TrialExpired />;
 
   return (
     <Routes>
