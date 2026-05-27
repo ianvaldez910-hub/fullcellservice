@@ -262,10 +262,22 @@ export default function Index() {
               </>
             )}
 
-            {page === 'cash' && <CashRegister />}
-            {page === 'settings' && <BusinessProfileSettings />}
-            {page === 'admin' && (isAdmin ? <AdminPanel /> : (() => { window.location.href = '/unauthorized'; return null; })())}
-            {page === 'curso' && (isAdmin ? <CursoPanel /> : (() => { window.location.href = '/unauthorized'; return null; })())}
+            {page === 'cash' && (
+              <div key="cash-page"><CashRegister /></div>
+            )}
+            {page === 'settings' && (
+              <div key="settings-page"><BusinessProfileSettings /></div>
+            )}
+            {page === 'admin' && (
+              <div key="admin-page">
+                {isAdmin ? <AdminPanel /> : <div className="text-center text-muted-foreground py-8">Acceso restringido</div>}
+              </div>
+            )}
+            {page === 'curso' && (
+              <div key="curso-page">
+                {isAdmin ? <CursoPanel /> : <div className="text-center text-muted-foreground py-8">Acceso restringido</div>}
+              </div>
+            )}
           </main>
         </div>
       </div>
