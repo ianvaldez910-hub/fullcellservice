@@ -280,6 +280,9 @@ export default function Index() {
                 {isAdmin ? <CursoPanel /> : <div className="text-center text-muted-foreground py-8">Acceso restringido</div>}
               </div>
             )}
+            {page === 'inventory' && (
+              <div key="inventory-page"><ModulesInventory /></div>
+            )}
           </main>
         </div>
       </div>
