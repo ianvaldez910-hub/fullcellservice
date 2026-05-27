@@ -158,6 +158,48 @@ export type Database = {
         }
         Relationships: []
       }
+      modules_inventory: {
+        Row: {
+          brand: string
+          color: string
+          cost_price: number
+          created_at: string
+          id: string
+          model: string
+          quality: string
+          sale_price: number
+          stock: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand?: string
+          color?: string
+          cost_price?: number
+          created_at?: string
+          id?: string
+          model?: string
+          quality?: string
+          sale_price?: number
+          stock?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand?: string
+          color?: string
+          cost_price?: number
+          created_at?: string
+          id?: string
+          model?: string
+          quality?: string
+          sale_price?: number
+          stock?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
