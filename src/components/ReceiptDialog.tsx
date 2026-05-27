@@ -22,7 +22,7 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
 
   const remaining = (item.budget || 0) - (item.deposit || 0);
   const warrantyLabel = WARRANTY_OPTIONS.find(w => w.value === item.warranty)?.label ?? 'Sin garantía';
-  const bName = profile?.business_name || 'FullCell Service';
+  const bName = profile?.business_name || 'Mi Taller';
   const bAddress = profile?.address ? `${profile.address}${profile.city ? `, ${profile.city}` : ''}` : '';
   const bHours = profile?.business_hours || '';
 

@@ -137,7 +137,7 @@ export default function Index() {
     }
   };
 
-  const bName = profile?.business_name || 'FullCell Service';
+  const bName = profile?.business_name || 'Mi Taller';
 
   const menuItems = [
     { title: 'Panel Principal', page: 'dashboard' as Page, icon: LayoutDashboard },
