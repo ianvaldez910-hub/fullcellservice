@@ -11,6 +11,7 @@ import { FinancialSummary } from '@/components/FinancialSummary';
 import { BusinessProfileSettings } from '@/components/BusinessProfileSettings';
 import { AdminPanel } from '@/components/AdminPanel';
 import { CursoPanel } from '@/components/CursoPanel';
+import { ModulesInventory } from '@/components/ModulesInventory';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,10 +21,10 @@ import {
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarProvider, SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Plus, Search, Wrench, LayoutDashboard, Settings, Banknote, Shield, LogOut, Zap, GraduationCap } from 'lucide-react';
+import { Plus, Search, Wrench, LayoutDashboard, Settings, Banknote, Shield, LogOut, Zap, GraduationCap, Boxes } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Page = 'dashboard' | 'settings' | 'cash' | 'admin' | 'curso';
+type Page = 'dashboard' | 'settings' | 'cash' | 'admin' | 'curso' | 'inventory';
 
 function itemToEquipment(item: EquipmentItem): Equipment {
   return {
@@ -142,6 +143,7 @@ export default function Index() {
   const menuItems = [
     { title: 'Panel Principal', page: 'dashboard' as Page, icon: LayoutDashboard },
     { title: 'Caja del Día', page: 'cash' as Page, icon: Banknote },
+    { title: 'Inventario de Módulos', page: 'inventory' as Page, icon: Boxes },
     { title: 'Ajustes', page: 'settings' as Page, icon: Settings },
     ...(isAdmin ? [{ title: 'Administración', page: 'admin' as Page, icon: Shield }] : []),
     ...(isAdmin ? [{ title: 'Curso', page: 'curso' as Page, icon: GraduationCap }] : []),
@@ -277,6 +279,9 @@ export default function Index() {
               <div key="curso-page">
                 {isAdmin ? <CursoPanel /> : <div className="text-center text-muted-foreground py-8">Acceso restringido</div>}
               </div>
+            )}
+            {page === 'inventory' && (
+              <div key="inventory-page"><ModulesInventory /></div>
             )}
           </main>
         </div>
