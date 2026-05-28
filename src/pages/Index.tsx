@@ -12,6 +12,7 @@ import { BusinessProfileSettings } from '@/components/BusinessProfileSettings';
 import { AdminPanel } from '@/components/AdminPanel';
 import { CursoPanel } from '@/components/CursoPanel';
 import { ModulesInventory } from '@/components/ModulesInventory';
+import { AccessoriesPOS } from '@/components/AccessoriesPOS';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,10 +22,10 @@ import {
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarProvider, SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Plus, Search, Wrench, LayoutDashboard, Settings, Banknote, Shield, LogOut, Zap, GraduationCap, Boxes } from 'lucide-react';
+import { Plus, Search, Wrench, LayoutDashboard, Settings, Banknote, Shield, LogOut, Zap, GraduationCap, Boxes, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Page = 'dashboard' | 'settings' | 'cash' | 'admin' | 'curso' | 'inventory';
+type Page = 'dashboard' | 'settings' | 'cash' | 'admin' | 'curso' | 'inventory' | 'accessories';
 
 function itemToEquipment(item: EquipmentItem): Equipment {
   return {
@@ -139,11 +140,13 @@ export default function Index() {
   };
 
   const bName = profile?.business_name || 'Mi Taller';
+  const logoUrl = (profile as any)?.logo_url as string | undefined;
 
   const menuItems = [
     { title: 'Panel Principal', page: 'dashboard' as Page, icon: LayoutDashboard },
     { title: 'Caja del Día', page: 'cash' as Page, icon: Banknote },
     { title: 'Inventario de Módulos', page: 'inventory' as Page, icon: Boxes },
+    { title: 'Inventario y Venta de Accesorios', page: 'accessories' as Page, icon: ShoppingCart },
     { title: 'Ajustes', page: 'settings' as Page, icon: Settings },
     ...(isAdmin ? [{ title: 'Administración', page: 'admin' as Page, icon: Shield }] : []),
     ...(isAdmin ? [{ title: 'Curso', page: 'curso' as Page, icon: GraduationCap }] : []),
@@ -155,10 +158,16 @@ export default function Index() {
         <Sidebar collapsible="icon">
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel className="flex items-center gap-2">
-                <Wrench className="h-4 w-4" />
-                <span>{bName}</span>
-              </SidebarGroupLabel>
+              <div className="flex flex-col items-center gap-2 py-3 px-2 border-b mb-2">
+                {logoUrl ? (
+                  <img src={logoUrl} alt={bName} className="h-14 w-14 rounded-full object-cover border-2 border-primary/30" />
+                ) : (
+                  <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/30">
+                    <Wrench className="h-6 w-6 text-primary" />
+                  </div>
+                )}
+                <span className="text-sm font-semibold text-center leading-tight truncate max-w-full">{bName}</span>
+              </div>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {menuItems.map(item => (
@@ -194,9 +203,13 @@ export default function Index() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <SidebarTrigger className="mr-1" />
-                <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-                  <Wrench className="h-5 w-5 text-primary-foreground" />
-                </div>
+                {logoUrl ? (
+                  <img src={logoUrl} alt={bName} className="h-10 w-10 rounded-xl object-cover border" />
+                ) : (
+                  <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+                    <Wrench className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                )}
                 <div>
                   <h1 className="text-lg font-bold leading-tight">{bName}</h1>
                   <p className="text-xs text-muted-foreground">Gestión de Servicio Técnico</p>
@@ -282,6 +295,9 @@ export default function Index() {
             )}
             {page === 'inventory' && (
               <div key="inventory-page"><ModulesInventory /></div>
+            )}
+            {page === 'accessories' && (
+              <div key="accessories-page"><AccessoriesPOS /></div>
             )}
           </main>
         </div>
