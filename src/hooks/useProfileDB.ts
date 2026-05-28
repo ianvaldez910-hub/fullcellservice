@@ -12,6 +12,7 @@ export function useProfileDB() {
     address?: string;
     city?: string;
     business_hours?: string;
+    logo_url?: string | null;
   }) => {
     if (!profile) return;
     await supabase
