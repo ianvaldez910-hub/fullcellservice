@@ -158,6 +158,42 @@ export type Database = {
         }
         Relationships: []
       }
+      general_products: {
+        Row: {
+          category: string
+          cost_price: number
+          created_at: string
+          id: string
+          product_name: string
+          sale_price: number
+          stock: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          cost_price?: number
+          created_at?: string
+          id?: string
+          product_name?: string
+          sale_price?: number
+          stock?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          cost_price?: number
+          created_at?: string
+          id?: string
+          product_name?: string
+          sale_price?: number
+          stock?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       modules_inventory: {
         Row: {
           brand: string
@@ -212,6 +248,7 @@ export type Database = {
           fecha_vencimiento_plan: string | null
           id: string
           license_status: Database["public"]["Enums"]["license_status"]
+          logo_url: string | null
           plan_activo: string | null
           trial_ends_at: string
           updated_at: string
@@ -229,6 +266,7 @@ export type Database = {
           fecha_vencimiento_plan?: string | null
           id?: string
           license_status?: Database["public"]["Enums"]["license_status"]
+          logo_url?: string | null
           plan_activo?: string | null
           trial_ends_at?: string
           updated_at?: string
@@ -246,11 +284,36 @@ export type Database = {
           fecha_vencimiento_plan?: string | null
           id?: string
           license_status?: Database["public"]["Enums"]["license_status"]
+          logo_url?: string | null
           plan_activo?: string | null
           trial_ends_at?: string
           updated_at?: string
           user_id?: string
           whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
+      sales_history: {
+        Row: {
+          created_at: string
+          id: string
+          items_sold: Json
+          total_amount: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          items_sold?: Json
+          total_amount?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          items_sold?: Json
+          total_amount?: number
+          user_id?: string
         }
         Relationships: []
       }

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Boxes, Plus, Search, Trash2, Pencil } from 'lucide-react';
+import { Boxes, Plus, Search, Trash2, Pencil, Minus } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Module = {
@@ -32,6 +32,7 @@ export function ModulesInventory() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Module, 'id'>>(empty);
+  const [flashId, setFlashId] = useState<string | null>(null);
 
   const load = async () => {
     if (!user) return;
@@ -94,6 +95,23 @@ export function ModulesInventory() {
     await load();
   };
 
+  const adjustStock = async (m: Module, delta: number) => {
+    const next = Math.max(0, (m.stock || 0) + delta);
+    if (next === m.stock) return;
+    // optimistic update + flash
+    setItems(prev => prev.map(i => i.id === m.id ? { ...i, stock: next } : i));
+    setFlashId(m.id);
+    const { error } = await supabase
+      .from('modules_inventory')
+      .update({ stock: next })
+      .eq('id', m.id);
+    setTimeout(() => setFlashId(prev => prev === m.id ? null : prev), 450);
+    if (error) {
+      toast.error('Error al actualizar stock');
+      setItems(prev => prev.map(i => i.id === m.id ? { ...i, stock: m.stock } : i));
+    }
+  };
+
   const stockBadge = (n: number) => {
     if (n <= 0) return <Badge variant="destructive">Sin Stock</Badge>;
     if (n <= 3) return <Badge className="bg-yellow-500 text-black hover:bg-yellow-500">Stock Bajo ({n})</Badge>;
@@ -144,7 +162,32 @@ export function ModulesInventory() {
                   <TableCell>{m.model || '—'}</TableCell>
                   <TableCell>{m.quality || '—'}</TableCell>
                   <TableCell>{m.color || '—'}</TableCell>
-                  <TableCell>{stockBadge(m.stock || 0)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7 rounded-full shrink-0"
+                        onClick={() => adjustStock(m, -1)}
+                        disabled={(m.stock || 0) <= 0}
+                        aria-label="Restar 1"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                      <div className={`min-w-[2.5rem] text-center transition-all duration-300 rounded-md px-1 ${flashId === m.id ? 'bg-primary/20 ring-2 ring-primary scale-110' : ''}`}>
+                        {stockBadge(m.stock || 0)}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7 rounded-full shrink-0"
+                        onClick={() => adjustStock(m, 1)}
+                        aria-label="Sumar 1"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right font-mono">${(m.cost_price || 0).toLocaleString()}</TableCell>
                   <TableCell className="text-right font-mono">${(m.sale_price || 0).toLocaleString()}</TableCell>
                   <TableCell className="text-right">

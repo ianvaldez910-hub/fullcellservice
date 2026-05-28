@@ -3,10 +3,12 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Printer, Share2 } from 'lucide-react';
-import { useRef } from 'react';
+import { Printer, Share2, Download, Image as ImageIcon } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { useAuth } from '@/hooks/useAuth';
+import html2canvas from 'html2canvas';
+import { toast } from 'sonner';
 
 interface ReceiptDialogProps {
   open: boolean;
@@ -17,6 +19,7 @@ interface ReceiptDialogProps {
 export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const { profile } = useAuth();
+  const [busy, setBusy] = useState(false);
 
   if (!item) return null;
 
@@ -25,6 +28,61 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
   const bName = profile?.business_name || 'Mi Taller';
   const bAddress = profile?.address ? `${profile.address}${profile.city ? `, ${profile.city}` : ''}` : '';
   const bHours = profile?.business_hours || '';
+  const logoUrl = (profile as any)?.logo_url as string | undefined;
+
+  const generateBlob = async (): Promise<Blob | null> => {
+    if (!receiptRef.current) return null;
+    const canvas = await html2canvas(receiptRef.current, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+    return await new Promise(res => canvas.toBlob(b => res(b), 'image/png', 0.95));
+  };
+
+  const handleDownloadImage = async () => {
+    setBusy(true);
+    try {
+      const blob = await generateBlob();
+      if (!blob) throw new Error('No se pudo generar la imagen');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Recibo-${item.id}-${item.clientName.replace(/\s+/g, '_')}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Imagen descargada');
+    } catch (e: any) { toast.error(e?.message || 'Error al generar imagen'); }
+    finally { setBusy(false); }
+  };
+
+  const handleSendImageWhatsApp = async () => {
+    setBusy(true);
+    try {
+      const blob = await generateBlob();
+      if (!blob) throw new Error('No se pudo generar la imagen');
+      const file = new File([blob], `Recibo-${item.id}.png`, { type: 'image/png' });
+      const nav = navigator as any;
+      const phone = item.phone || item.altPhone;
+      const text = `📋 Recibo de Servicio - ${bName}\nOrden #${item.id}\nEstado: ${item.status}\nTotal: $${remaining.toLocaleString()}`;
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], title: `Recibo #${item.id}`, text });
+        return;
+      }
+      // Fallback: download then open WhatsApp text with note to attach
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `Recibo-${item.id}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.info('Imagen descargada. Adjuntala en WhatsApp.');
+      if (phone) openWhatsApp(phone, text);
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') toast.error(e?.message || 'Error al enviar imagen');
+    }
+    finally { setBusy(false); }
+  };
 
   const handlePrint = () => {
     const win = window.open('', '_blank');
@@ -92,9 +150,12 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
         <DialogHeader>
           <DialogTitle>Recibo - Orden #{item.id}</DialogTitle>
         </DialogHeader>
-        <div ref={receiptRef} className="space-y-4 font-mono text-sm border rounded-lg p-5 bg-card">
-          <div className="text-center border-b border-dashed pb-3">
-            <p className="text-lg font-bold">🔧 {bName}</p>
+        <div ref={receiptRef} className="space-y-4 font-mono text-sm border rounded-lg p-5 bg-white text-black">
+          <div className="text-center border-b border-dashed border-gray-400 pb-3">
+            {logoUrl ? (
+              <img src={logoUrl} alt={bName} crossOrigin="anonymous" className="h-14 w-14 rounded-full object-cover mx-auto mb-2 border" />
+            ) : null}
+            <p className="text-lg font-bold">{bName}</p>
             {bAddress && <p className="text-[10px] text-muted-foreground">{bAddress}</p>}
             {bHours && <p className="text-[10px] text-muted-foreground">🕐 {bHours}</p>}
             <p className="text-xs text-muted-foreground mt-1">Orden #{item.id} · {item.dateIn}</p>
@@ -136,13 +197,26 @@ export function ReceiptDialog({ open, onClose, item }: ReceiptDialogProps) {
           <div className="text-center text-xs text-muted-foreground pt-2">
             Gracias por confiar en {bName}
           </div>
+          {item.status === 'Entregado' && (
+            <div className="text-center text-xs font-bold text-green-700 border-2 border-green-600 rounded-md py-1">
+              ✓ EQUIPO ENTREGADO
+            </div>
+          )}
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex flex-wrap justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
+          <Button variant="outline" className="gap-2" onClick={handleDownloadImage} disabled={busy}>
+            <Download className="h-4 w-4" />
+            Descargar Imagen
+          </Button>
           <Button variant="outline" className="gap-2" onClick={handleShareWhatsApp}>
             <Share2 className="h-4 w-4" />
-            WhatsApp
+            WhatsApp Texto
+          </Button>
+          <Button className="gap-2 bg-[#25D366] hover:bg-[#1da851] text-white" onClick={handleSendImageWhatsApp} disabled={busy}>
+            <ImageIcon className="h-4 w-4" />
+            Enviar Recibo por WhatsApp
           </Button>
           <Button onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />

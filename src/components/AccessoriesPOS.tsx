@@ -1,0 +1,393 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ShoppingCart, Plus, Minus, Search, Trash2, Pencil, Receipt, Download, Image as ImageIcon, Printer } from 'lucide-react';
+import { toast } from 'sonner';
+import html2canvas from 'html2canvas';
+
+type Product = {
+  id: string;
+  category: string;
+  product_name: string;
+  stock: number;
+  cost_price: number;
+  sale_price: number;
+};
+
+type CartItem = { id: string; product_name: string; sale_price: number; qty: number; stock: number };
+
+const money = (n: number) => `$${(Number(n) || 0).toLocaleString('es-AR')}`;
+const emptyForm: Omit<Product, 'id'> = { category: '', product_name: '', stock: 0, cost_price: 0, sale_price: 0 };
+
+function NumInput({ value, onChange, ...rest }: { value: number; onChange: (n: number) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+  const [str, setStr] = useState(String(value || 0));
+  useEffect(() => { setStr(String(value ?? 0)); }, [value]);
+  return (
+    <Input
+      type="number" inputMode="decimal" value={str}
+      onFocus={e => { if (str === '0') { setStr(''); e.target.select(); } }}
+      onChange={e => { setStr(e.target.value); onChange(Number(e.target.value) || 0); }}
+      onBlur={() => { if (str === '' || isNaN(Number(str))) { setStr('0'); onChange(0); } }}
+      {...rest}
+    />
+  );
+}
+
+export function AccessoriesPOS() {
+  const { user, profile } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Omit<Product, 'id'>>(emptyForm);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [lastSale, setLastSale] = useState<{ items: CartItem[]; total: number; date: string; id: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
+
+  const bName = profile?.business_name || 'Mi Taller';
+  const bAddress = profile?.address ? `${profile.address}${profile.city ? `, ${profile.city}` : ''}` : '';
+  const logoUrl = (profile as any)?.logo_url as string | undefined;
+
+  const load = async () => {
+    const { data, error } = await supabase
+      .from('general_products')
+      .select('id,category,product_name,stock,cost_price,sale_price')
+      .order('product_name');
+    if (error) { toast.error('Error al cargar productos'); return; }
+    setProducts((data || []) as Product[]);
+  };
+  useEffect(() => { load(); }, [user?.id]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(p => p.product_name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+  }, [products, search]);
+
+  const openNew = () => { setEditingId(null); setForm(emptyForm); setOpen(true); };
+  const openEdit = (p: Product) => {
+    setEditingId(p.id);
+    setForm({ category: p.category, product_name: p.product_name, stock: p.stock, cost_price: p.cost_price, sale_price: p.sale_price });
+    setOpen(true);
+  };
+
+  const saveProduct = async () => {
+    if (!user) return;
+    if (!form.product_name.trim()) { toast.error('El nombre es obligatorio'); return; }
+    const payload = {
+      category: form.category.trim(),
+      product_name: form.product_name.trim(),
+      stock: Number(form.stock) || 0,
+      cost_price: Number(form.cost_price) || 0,
+      sale_price: Number(form.sale_price) || 0,
+    };
+    if (editingId) {
+      const { error } = await supabase.from('general_products').update(payload).eq('id', editingId);
+      if (error) { toast.error('Error al actualizar'); return; }
+      toast.success('Producto actualizado');
+    } else {
+      const { error } = await supabase.from('general_products').insert({ ...payload, user_id: user.id });
+      if (error) { toast.error('Error al crear'); return; }
+      toast.success('Producto agregado');
+    }
+    setOpen(false);
+    await load();
+  };
+
+  const removeProduct = async (id: string) => {
+    if (!confirm('¿Eliminar este producto?')) return;
+    const { error } = await supabase.from('general_products').delete().eq('id', id);
+    if (error) { toast.error('Error al eliminar'); return; }
+    setCart(c => c.filter(i => i.id !== id));
+    await load();
+  };
+
+  const addToCart = (p: Product) => {
+    if ((p.stock || 0) <= 0) { toast.error('Sin stock disponible'); return; }
+    setCart(prev => {
+      const ex = prev.find(i => i.id === p.id);
+      if (ex) {
+        if (ex.qty + 1 > p.stock) { toast.error('Sin stock suficiente'); return prev; }
+        return prev.map(i => i.id === p.id ? { ...i, qty: i.qty + 1 } : i);
+      }
+      return [...prev, { id: p.id, product_name: p.product_name, sale_price: p.sale_price, qty: 1, stock: p.stock }];
+    });
+  };
+
+  const changeQty = (id: string, delta: number) => {
+    setCart(prev => prev.flatMap(i => {
+      if (i.id !== id) return [i];
+      const next = i.qty + delta;
+      if (next <= 0) return [];
+      if (next > i.stock) { toast.error('Sin stock suficiente'); return [i]; }
+      return [{ ...i, qty: next }];
+    }));
+  };
+
+  const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.id !== id));
+
+  const total = useMemo(() => cart.reduce((s, i) => s + i.sale_price * i.qty, 0), [cart]);
+
+  const stockBadge = (n: number) => {
+    if (n <= 0) return <Badge variant="destructive">Sin Stock</Badge>;
+    if (n <= 3) return <Badge className="bg-yellow-500 text-black hover:bg-yellow-500">Stock Bajo ({n})</Badge>;
+    return <Badge variant="secondary">{n}</Badge>;
+  };
+
+  const confirmSale = async () => {
+    if (!user || cart.length === 0) return;
+    setBusy(true);
+    try {
+      const items_sold = cart.map(i => ({ id: i.id, name: i.product_name, qty: i.qty, price: i.sale_price, subtotal: i.qty * i.sale_price }));
+      const { data: sale, error: insErr } = await supabase
+        .from('sales_history')
+        .insert({ user_id: user.id, items_sold, total_amount: total })
+        .select('id,created_at')
+        .single();
+      if (insErr) throw insErr;
+      // Decrement stock
+      await Promise.all(cart.map(async i => {
+        const p = products.find(p => p.id === i.id);
+        const newStock = Math.max(0, (p?.stock || 0) - i.qty);
+        await supabase.from('general_products').update({ stock: newStock }).eq('id', i.id);
+      }));
+      setLastSale({ items: cart, total, date: sale?.created_at || new Date().toISOString(), id: sale?.id || '' });
+      setCart([]);
+      setReceiptOpen(true);
+      toast.success('Venta confirmada');
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || 'Error al confirmar venta');
+    } finally { setBusy(false); }
+  };
+
+  const genReceiptBlob = async (): Promise<Blob | null> => {
+    if (!receiptRef.current) return null;
+    const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false });
+    return await new Promise(res => canvas.toBlob(b => res(b), 'image/png', 0.95));
+  };
+
+  const downloadReceipt = async () => {
+    const blob = await genReceiptBlob();
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `Recibo-Venta-${Date.now()}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const shareReceipt = async () => {
+    const blob = await genReceiptBlob();
+    if (!blob) return;
+    const file = new File([blob], `Recibo-Venta.png`, { type: 'image/png' });
+    const nav = navigator as any;
+    if (nav.canShare && nav.canShare({ files: [file] })) {
+      try { await nav.share({ files: [file], title: 'Recibo de Compra' }); }
+      catch (e: any) { if (e?.name !== 'AbortError') toast.error(e?.message); }
+    } else {
+      await downloadReceipt();
+      toast.info('Imagen descargada. Adjuntala en WhatsApp.');
+      window.open('https://wa.me/', '_blank');
+    }
+  };
+
+  const printReceipt = () => {
+    const w = window.open('', '_blank'); if (!w || !lastSale) return;
+    w.document.write(`<html><head><title>Recibo</title></head><body>${receiptRef.current?.outerHTML || ''}</body></html>`);
+    w.document.close(); w.print();
+  };
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+          <ShoppingCart className="h-5 w-5 text-primary-foreground" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold">Inventario y Venta de Accesorios</h2>
+          <p className="text-xs text-muted-foreground">Punto de venta de mostrador</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* LEFT: Stock */}
+        <div className="lg:col-span-3 bg-card rounded-xl border shadow-sm">
+          <div className="p-4 border-b flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar por nombre o categoría..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+            </div>
+            <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" />Agregar Artículo al Stock</Button>
+          </div>
+          <div className="p-2 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Categoría</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead className="text-right">Costo</TableHead>
+                  <TableHead className="text-right">Venta</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Sin productos</TableCell></TableRow>
+                ) : filtered.map(p => (
+                  <TableRow key={p.id}>
+                    <TableCell className="text-xs">{p.category || '—'}</TableCell>
+                    <TableCell className="font-medium">{p.product_name}</TableCell>
+                    <TableCell>{stockBadge(p.stock || 0)}</TableCell>
+                    <TableCell className="text-right font-mono">{money(p.cost_price)}</TableCell>
+                    <TableCell className="text-right font-mono">{money(p.sale_price)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1 h-8" onClick={() => addToCart(p)}>
+                          <Plus className="h-3.5 w-3.5" />Añadir a la Venta
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeProduct(p.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* RIGHT: Cart */}
+        <div className="lg:col-span-2 bg-card rounded-xl border shadow-sm flex flex-col">
+          <div className="p-4 border-b flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            <h3 className="font-bold">Carrito de Venta</h3>
+            <Badge variant="secondary" className="ml-auto">{cart.length} ítem{cart.length !== 1 ? 's' : ''}</Badge>
+          </div>
+          <div className="p-3 space-y-2 flex-1 max-h-[500px] overflow-y-auto">
+            {cart.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Agregá productos desde el catálogo</p>
+            ) : cart.map(i => (
+              <div key={i.id} className="rounded-lg border p-3 space-y-2">
+                <div className="flex justify-between items-start gap-2">
+                  <p className="font-medium text-sm">{i.product_name}</p>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 -mt-1 -mr-1" onClick={() => removeFromCart(i.id)}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-full" onClick={() => changeQty(i.id, -1)}>
+                      <Minus className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="min-w-[2rem] text-center font-mono font-bold">{i.qty}</span>
+                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-full" onClick={() => changeQty(i.id, 1)}>
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-muted-foreground">{money(i.sale_price)} c/u</p>
+                    <p className="font-mono font-bold">{money(i.sale_price * i.qty)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-4 border-t space-y-3">
+            <div className="flex justify-between items-baseline">
+              <span className="text-sm font-medium text-muted-foreground">TOTAL A PAGAR</span>
+              <span className="text-2xl font-bold font-mono text-primary">{money(total)}</span>
+            </div>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={cart.length === 0 || busy} onClick={confirmSale}>
+              <Receipt className="h-4 w-4 mr-2" />
+              Confirmar Venta y Generar Recibo
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Add/Edit Product Dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Editar Producto' : 'Agregar Artículo al Stock'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Categoría</Label>
+              <Input value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Cables / Cargadores / Vidrios..." />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Nombre del Producto</Label>
+              <Input value={form.product_name} onChange={e => setForm(f => ({ ...f, product_name: e.target.value }))} placeholder="Ej: Cable USB-C 1m" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Cantidad Inicial</Label>
+              <NumInput value={form.stock} onChange={n => setForm(f => ({ ...f, stock: n }))} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Precio Costo</Label>
+              <NumInput value={form.cost_price} onChange={n => setForm(f => ({ ...f, cost_price: n }))} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Precio Venta</Label>
+              <NumInput value={form.sale_price} onChange={n => setForm(f => ({ ...f, sale_price: n }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={saveProduct}>{editingId ? 'Guardar' : 'Agregar'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt Dialog */}
+      <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Recibo de Compra</DialogTitle>
+          </DialogHeader>
+          {lastSale && (
+            <div ref={receiptRef} className="space-y-3 font-mono text-sm border rounded-lg p-5 bg-white text-black">
+              <div className="text-center border-b border-dashed border-gray-400 pb-3">
+                {logoUrl && <img src={logoUrl} alt={bName} crossOrigin="anonymous" className="h-14 w-14 rounded-full object-cover mx-auto mb-2 border" />}
+                <p className="text-lg font-bold">{bName}</p>
+                {bAddress && <p className="text-[10px] opacity-70">{bAddress}</p>}
+                <p className="text-xs opacity-70 mt-1">Recibo · {new Date(lastSale.date).toLocaleString('es-AR')}</p>
+              </div>
+              <div className="space-y-1.5">
+                {lastSale.items.map((i, idx) => (
+                  <div key={idx} className="flex justify-between gap-2 text-xs">
+                    <span className="flex-1">{i.qty} x {i.product_name}</span>
+                    <span className="font-mono">{money(i.sale_price * i.qty)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-dashed border-gray-400 pt-2 flex justify-between font-bold text-base">
+                <span>TOTAL</span>
+                <span className="font-mono">{money(lastSale.total)}</span>
+              </div>
+              <div className="text-center text-xs opacity-70 pt-1">¡Gracias por su compra!</div>
+            </div>
+          )}
+          <DialogFooter className="flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setReceiptOpen(false)}>Cerrar</Button>
+            <Button variant="outline" className="gap-2" onClick={downloadReceipt}><Download className="h-4 w-4" />Descargar</Button>
+            <Button variant="outline" className="gap-2" onClick={printReceipt}><Printer className="h-4 w-4" />Imprimir</Button>
+            <Button className="gap-2 bg-[#25D366] hover:bg-[#1da851] text-white" onClick={shareReceipt}>
+              <ImageIcon className="h-4 w-4" />Enviar por WhatsApp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
