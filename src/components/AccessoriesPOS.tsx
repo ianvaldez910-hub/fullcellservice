@@ -11,6 +11,8 @@ import { ShoppingCart, Plus, Minus, Search, Trash2, Pencil, Receipt, Download, I
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 
+type Source = 'general' | 'module';
+
 type Product = {
   id: string;
   category: string;
@@ -18,12 +20,24 @@ type Product = {
   stock: number;
   cost_price: number;
   sale_price: number;
+  source: Source;
+  warranty_days?: number;
 };
 
-type CartItem = { id: string; product_name: string; sale_price: number; qty: number; stock: number };
+type CartItem = {
+  id: string;
+  product_name: string;
+  sale_price: number;
+  qty: number;
+  stock: number;
+  source: Source;
+  warranty_days: number;
+};
 
 const money = (n: number) => `$${(Number(n) || 0).toLocaleString('es-AR')}`;
-const emptyForm: Omit<Product, 'id'> = { category: '', product_name: '', stock: 0, cost_price: 0, sale_price: 0 };
+const emptyForm: Omit<Product, 'id' | 'source'> = { category: '', product_name: '', stock: 0, cost_price: 0, sale_price: 0, warranty_days: 0 };
+
+const WARRANTY_PRESETS = [0, 30, 90, 180];
 
 function NumInput({ value, onChange, ...rest }: { value: number; onChange: (n: number) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
   const [str, setStr] = useState(String(value || 0));
@@ -45,7 +59,8 @@ export function AccessoriesPOS() {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<Omit<Product, 'id'>>(emptyForm);
+  const [form, setForm] = useState<Omit<Product, 'id' | 'source'>>(emptyForm);
+  const [warrantyMode, setWarrantyMode] = useState<string>('0');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [lastSale, setLastSale] = useState<{ items: CartItem[]; total: number; date: string; id: string } | null>(null);
@@ -57,12 +72,39 @@ export function AccessoriesPOS() {
   const logoUrl = (profile as any)?.logo_url as string | undefined;
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from('general_products')
-      .select('id,category,product_name,stock,cost_price,sale_price')
-      .order('product_name');
-    if (error) { toast.error('Error al cargar productos'); return; }
-    setProducts((data || []) as Product[]);
+    const [gRes, mRes] = await Promise.all([
+      supabase
+        .from('general_products')
+        .select('id,category,product_name,stock,cost_price,sale_price,warranty_days')
+        .order('product_name'),
+      supabase
+        .from('modules_inventory')
+        .select('id,brand,model,quality,color,stock,cost_price,sale_price')
+        .order('brand'),
+    ]);
+    if (gRes.error) { toast.error('Error al cargar productos'); return; }
+    if (mRes.error) { toast.error('Error al cargar módulos'); return; }
+    const generals: Product[] = (gRes.data || []).map((p: any) => ({
+      id: p.id,
+      category: p.category || '',
+      product_name: p.product_name,
+      stock: p.stock || 0,
+      cost_price: p.cost_price || 0,
+      sale_price: p.sale_price || 0,
+      warranty_days: p.warranty_days || 0,
+      source: 'general',
+    }));
+    const modules: Product[] = (mRes.data || []).map((m: any) => ({
+      id: m.id,
+      category: 'Módulos',
+      product_name: [m.brand, m.model, m.quality, m.color].filter(Boolean).join(' · '),
+      stock: m.stock || 0,
+      cost_price: m.cost_price || 0,
+      sale_price: m.sale_price || 0,
+      warranty_days: 0,
+      source: 'module',
+    }));
+    setProducts([...generals, ...modules]);
   };
   useEffect(() => { load(); }, [user?.id]);
 
@@ -74,8 +116,18 @@ export function AccessoriesPOS() {
 
   const openNew = () => { setEditingId(null); setForm(emptyForm); setOpen(true); };
   const openEdit = (p: Product) => {
+    if (p.source === 'module') {
+      toast.info('Editá los módulos desde "Inventario de Módulos".');
+      return;
+    }
     setEditingId(p.id);
-    setForm({ category: p.category, product_name: p.product_name, stock: p.stock, cost_price: p.cost_price, sale_price: p.sale_price });
+    setForm({
+      category: p.category, product_name: p.product_name, stock: p.stock,
+      cost_price: p.cost_price, sale_price: p.sale_price,
+      warranty_days: p.warranty_days || 0,
+    });
+    const w = p.warranty_days || 0;
+    setWarrantyMode(WARRANTY_PRESETS.includes(w) ? String(w) : 'custom');
     setOpen(true);
   };
 
@@ -88,6 +140,7 @@ export function AccessoriesPOS() {
       stock: Number(form.stock) || 0,
       cost_price: Number(form.cost_price) || 0,
       sale_price: Number(form.sale_price) || 0,
+      warranty_days: Number(form.warranty_days) || 0,
     };
     if (editingId) {
       const { error } = await supabase.from('general_products').update(payload).eq('id', editingId);
@@ -103,6 +156,11 @@ export function AccessoriesPOS() {
   };
 
   const removeProduct = async (id: string) => {
+    const p = products.find(p => p.id === id);
+    if (p?.source === 'module') {
+      toast.info('Eliminá los módulos desde "Inventario de Módulos".');
+      return;
+    }
     if (!confirm('¿Eliminar este producto?')) return;
     const { error } = await supabase.from('general_products').delete().eq('id', id);
     if (error) { toast.error('Error al eliminar'); return; }
@@ -118,7 +176,10 @@ export function AccessoriesPOS() {
         if (ex.qty + 1 > p.stock) { toast.error('Sin stock suficiente'); return prev; }
         return prev.map(i => i.id === p.id ? { ...i, qty: i.qty + 1 } : i);
       }
-      return [...prev, { id: p.id, product_name: p.product_name, sale_price: p.sale_price, qty: 1, stock: p.stock }];
+      return [...prev, {
+        id: p.id, product_name: p.product_name, sale_price: p.sale_price,
+        qty: 1, stock: p.stock, source: p.source, warranty_days: p.warranty_days || 0,
+      }];
     });
   };
 
@@ -134,6 +195,10 @@ export function AccessoriesPOS() {
 
   const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.id !== id));
 
+  const updateCartPrice = (id: string, price: number) => {
+    setCart(prev => prev.map(i => i.id === id ? { ...i, sale_price: Math.max(0, price) } : i));
+  };
+
   const total = useMemo(() => cart.reduce((s, i) => s + i.sale_price * i.qty, 0), [cart]);
 
   const stockBadge = (n: number) => {
@@ -146,19 +211,36 @@ export function AccessoriesPOS() {
     if (!user || cart.length === 0) return;
     setBusy(true);
     try {
-      const items_sold = cart.map(i => ({ id: i.id, name: i.product_name, qty: i.qty, price: i.sale_price, subtotal: i.qty * i.sale_price }));
+      const items_sold = cart.map(i => ({
+        id: i.id, name: i.product_name, qty: i.qty, price: i.sale_price,
+        subtotal: i.qty * i.sale_price, source: i.source, warranty_days: i.warranty_days,
+      }));
       const { data: sale, error: insErr } = await supabase
         .from('sales_history')
         .insert({ user_id: user.id, items_sold, total_amount: total })
         .select('id,created_at')
         .single();
       if (insErr) throw insErr;
-      // Decrement stock
+      // Decrement stock from the right table per item source
       await Promise.all(cart.map(async i => {
         const p = products.find(p => p.id === i.id);
         const newStock = Math.max(0, (p?.stock || 0) - i.qty);
-        await supabase.from('general_products').update({ stock: newStock }).eq('id', i.id);
+        const table = i.source === 'module' ? 'modules_inventory' : 'general_products';
+        await supabase.from(table).update({ stock: newStock }).eq('id', i.id);
       }));
+      // Register sale in Caja del Día
+      const today = new Date().toISOString().split('T')[0];
+      const itemsLabel = cart.length === 1
+        ? cart[0].product_name
+        : `${cart.length} artículos`;
+      await supabase.from('cash_entries').insert({
+        user_id: user.id,
+        date: today,
+        order_id: 0,
+        client_name: 'Venta Mostrador',
+        amount: total,
+        concept: `Accesorios - ${itemsLabel}`,
+      });
       setLastSale({ items: cart, total, date: sale?.created_at || new Date().toISOString(), id: sale?.id || '' });
       setCart([]);
       setReceiptOpen(true);
@@ -244,7 +326,11 @@ export function AccessoriesPOS() {
                   <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Sin productos</TableCell></TableRow>
                 ) : filtered.map(p => (
                   <TableRow key={p.id}>
-                    <TableCell className="text-xs">{p.category || '—'}</TableCell>
+                    <TableCell className="text-xs">
+                      {p.source === 'module' ? (
+                        <Badge className="bg-purple-600 hover:bg-purple-600 text-white border-0">Módulo</Badge>
+                      ) : (p.category || '—')}
+                    </TableCell>
                     <TableCell className="font-medium">{p.product_name}</TableCell>
                     <TableCell>{stockBadge(p.stock || 0)}</TableCell>
                     <TableCell className="text-right font-mono">{money(p.cost_price)}</TableCell>
@@ -254,8 +340,12 @@ export function AccessoriesPOS() {
                         <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1 h-8" onClick={() => addToCart(p)}>
                           <Plus className="h-3.5 w-3.5" />Añadir a la Venta
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeProduct(p.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                        {p.source === 'general' && (
+                          <>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeProduct(p.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -278,10 +368,21 @@ export function AccessoriesPOS() {
             ) : cart.map(i => (
               <div key={i.id} className="rounded-lg border p-3 space-y-2">
                 <div className="flex justify-between items-start gap-2">
-                  <p className="font-medium text-sm">{i.product_name}</p>
+                  <p className="font-medium text-sm flex-1">{i.product_name}</p>
                   <Button size="icon" variant="ghost" className="h-6 w-6 -mt-1 -mr-1" onClick={() => removeFromCart(i.id)}>
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
                   </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-[10px] text-muted-foreground shrink-0">Precio c/u</Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    className="h-7 text-xs"
+                    value={i.sale_price}
+                    onFocus={e => { if (e.target.value === '0') e.target.select(); }}
+                    onChange={e => updateCartPrice(i.id, Number(e.target.value) || 0)}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
