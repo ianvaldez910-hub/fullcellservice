@@ -52,9 +52,11 @@ export type Database = {
           apellido: string
           created_at: string
           created_by: string | null
+          curso: string
           estado_pago: string
           fecha_registro: string
           id: string
+          monto_abonado: number
           nombre: string
           telefono: string
           updated_at: string
@@ -63,9 +65,11 @@ export type Database = {
           apellido?: string
           created_at?: string
           created_by?: string | null
+          curso?: string
           estado_pago?: string
           fecha_registro?: string
           id?: string
+          monto_abonado?: number
           nombre: string
           telefono?: string
           updated_at?: string
@@ -74,9 +78,11 @@ export type Database = {
           apellido?: string
           created_at?: string
           created_by?: string | null
+          curso?: string
           estado_pago?: string
           fecha_registro?: string
           id?: string
+          monto_abonado?: number
           nombre?: string
           telefono?: string
           updated_at?: string
@@ -169,6 +175,7 @@ export type Database = {
           stock: number
           updated_at: string
           user_id: string
+          warranty_days: number
         }
         Insert: {
           category?: string
@@ -180,6 +187,7 @@ export type Database = {
           stock?: number
           updated_at?: string
           user_id: string
+          warranty_days?: number
         }
         Update: {
           category?: string
@@ -191,6 +199,7 @@ export type Database = {
           stock?: number
           updated_at?: string
           user_id?: string
+          warranty_days?: number
         }
         Relationships: []
       }
