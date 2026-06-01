@@ -492,9 +492,16 @@ export function AccessoriesPOS() {
               </div>
               <div className="space-y-1.5">
                 {lastSale.items.map((i, idx) => (
-                  <div key={idx} className="flex justify-between gap-2 text-xs">
-                    <span className="flex-1">{i.qty} x {i.product_name}</span>
-                    <span className="font-mono">{money(i.sale_price * i.qty)}</span>
+                  <div key={idx} className="text-xs">
+                    <div className="flex justify-between gap-2">
+                      <span className="flex-1">{i.qty} x {i.product_name}</span>
+                      <span className="font-mono">{money(i.sale_price * i.qty)}</span>
+                    </div>
+                    {i.warranty_days > 0 && (
+                      <div className="text-[10px] opacity-70 pl-3">
+                        Garantía: {i.warranty_days} días
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
