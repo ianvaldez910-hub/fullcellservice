@@ -442,6 +442,32 @@ export function AccessoriesPOS() {
               <Label className="text-xs">Precio Venta</Label>
               <NumInput value={form.sale_price} onChange={n => setForm(f => ({ ...f, sale_price: n }))} />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Días de Garantía</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={warrantyMode}
+                onChange={e => {
+                  const v = e.target.value;
+                  setWarrantyMode(v);
+                  if (v !== 'custom') {
+                    setForm(f => ({ ...f, warranty_days: Number(v) || 0 }));
+                  }
+                }}
+              >
+                <option value="0">Sin garantía</option>
+                <option value="30">30 días</option>
+                <option value="90">90 días</option>
+                <option value="180">180 días</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </div>
+            {warrantyMode === 'custom' && (
+              <div className="space-y-1">
+                <Label className="text-xs">Días personalizados</Label>
+                <NumInput value={form.warranty_days || 0} onChange={n => setForm(f => ({ ...f, warranty_days: n }))} />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
