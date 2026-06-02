@@ -8,7 +8,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { GraduationCap, Plus, Trash2, Loader2, Send } from 'lucide-react';
+import { DialogFooter } from '@/components/ui/dialog';
+import { GraduationCap, Plus, Trash2, Loader2, Receipt, Download, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 
@@ -47,9 +48,11 @@ export function CursoPanel() {
     monto_abonado: 0, curso: '',
   });
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const bName = profile?.business_name || 'Mi Taller';
+  const bAddress = (profile as any)?.address ? `${(profile as any).address}${(profile as any).city ? `, ${(profile as any).city}` : ''}` : '';
   const logoUrl = (profile as any)?.logo_url as string | undefined;
 
   const fetchStudents = async () => {
@@ -120,38 +123,50 @@ export function CursoPanel() {
     toast.success('Alumno eliminado');
   };
 
-  const sendReceipt = async (s: Student) => {
+  const openReceipt = (s: Student) => {
     setReceiptStudent(s);
-    // wait for render
-    await new Promise(r => setTimeout(r, 100));
-    try {
-      if (!receiptRef.current) throw new Error('Recibo no disponible');
-      const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false });
-      const blob: Blob | null = await new Promise(res => canvas.toBlob(b => res(b), 'image/png', 0.95));
-      if (!blob) throw new Error('No se pudo generar la imagen');
+    setReceiptOpen(true);
+  };
 
+  const genReceiptBlob = async (): Promise<Blob | null> => {
+    if (!receiptRef.current) return null;
+    const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false });
+    return await new Promise(res => canvas.toBlob(b => res(b), 'image/png', 0.95));
+  };
+
+  const downloadReceipt = async () => {
+    try {
+      const blob = await genReceiptBlob();
+      if (!blob || !receiptStudent) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Recibo-${receiptStudent.nombre}-${receiptStudent.apellido}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Imagen descargada');
+    } catch (e: any) { toast.error(e?.message || 'Error al descargar'); }
+  };
+
+  const shareReceipt = async () => {
+    try {
+      const blob = await genReceiptBlob();
+      if (!blob || !receiptStudent) return;
       try {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        toast.success('¡Recibo del alumno copiado! Presiona Ctrl+V en WhatsApp para enviarlo');
+        toast.success('¡Recibo copiado! Presiona Ctrl+V en WhatsApp para enviarlo');
       } catch {
-        // Fallback: download
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `Recibo-${s.nombre}-${s.apellido}.png`;
+        a.href = url; a.download = `Recibo-${receiptStudent.nombre}-${receiptStudent.apellido}.png`;
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
         toast.info('Imagen descargada. Adjuntala en WhatsApp.');
       }
-
-      // Open WhatsApp chat
-      const phone = (s.telefono || '').replace(/\D/g, '');
+      const phone = (receiptStudent.telefono || '').replace(/\D/g, '');
       const waUrl = phone ? `https://wa.me/${phone}` : 'https://wa.me/';
       window.open(waUrl, '_blank');
-    } catch (e: any) {
-      toast.error(e?.message || 'Error generando recibo');
-    } finally {
-      setTimeout(() => setReceiptStudent(null), 600);
-    }
+    } catch (e: any) { toast.error(e?.message || 'Error generando recibo'); }
   };
 
   return (
@@ -272,10 +287,10 @@ export function CursoPanel() {
                       <Button
                         size="sm"
                         className="gap-1 h-8 bg-[#25D366] hover:bg-[#1da851] text-white"
-                        onClick={() => sendReceipt(s)}
+                        onClick={() => openReceipt(s)}
                       >
-                        <Send className="h-3.5 w-3.5" />
-                        Generar y Enviar Recibo
+                        <Receipt className="h-3.5 w-3.5" />
+                        Generar Recibo
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => handleDelete(s.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -289,47 +304,56 @@ export function CursoPanel() {
         )}
       </div>
 
-      {/* Hidden receipt for rendering */}
-      {receiptStudent && (
-        <div className="fixed -left-[9999px] top-0">
-          <div
-            ref={receiptRef}
-            className="w-[360px] bg-white text-black p-5 font-mono text-sm space-y-3"
-          >
-            <div className="text-center border-b border-dashed border-gray-400 pb-3">
-              {logoUrl && (
-                <img
-                  src={logoUrl}
-                  alt={bName}
-                  crossOrigin="anonymous"
-                  className="h-14 w-14 rounded-full object-cover mx-auto mb-2 border"
-                />
-              )}
-              <p className="text-lg font-bold">{bName}</p>
-              <p className="text-xs opacity-70 mt-1">Recibo de Academia</p>
-              <p className="text-[10px] opacity-60">{new Date().toLocaleString('es-AR')}</p>
-            </div>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between"><span className="opacity-70">Alumno:</span><span className="font-bold">{receiptStudent.nombre} {receiptStudent.apellido}</span></div>
-              <div className="flex justify-between"><span className="opacity-70">Curso:</span><span>{receiptStudent.curso || '—'}</span></div>
-              <div className="flex justify-between items-center">
-                <span className="opacity-70">Estado:</span>
-                <span
-                  className="px-2 py-0.5 rounded text-white text-[11px] font-bold"
-                  style={{ backgroundColor: receiptStudent.estado_pago === 'pagado' ? '#16a34a' : '#dc2626' }}
-                >
-                  {receiptStudent.estado_pago === 'pagado' ? 'PAGADO' : 'SEÑADO'}
-                </span>
+      {/* Receipt Dialog — mismo formato visual que la venta de accesorios */}
+      <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Recibo de Curso</DialogTitle>
+          </DialogHeader>
+          {receiptStudent && (
+            <div ref={receiptRef} className="space-y-3 font-mono text-sm border rounded-lg p-5 bg-white text-black">
+              <div className="text-center border-b border-dashed border-gray-400 pb-3">
+                {logoUrl && <img src={logoUrl} alt={bName} crossOrigin="anonymous" className="h-14 w-14 rounded-full object-cover mx-auto mb-2 border" />}
+                <p className="text-lg font-bold">{bName}</p>
+                {bAddress && <p className="text-[10px] opacity-70">{bAddress}</p>}
+                <p className="text-xs opacity-70 mt-1">Recibo · {new Date().toLocaleString('es-AR')}</p>
               </div>
+              <div className="space-y-1.5">
+                <div className="text-xs">
+                  <div className="flex justify-between gap-2">
+                    <span className="flex-1">Alumno: <span className="font-bold">{receiptStudent.nombre} {receiptStudent.apellido}</span></span>
+                  </div>
+                  <div className="flex justify-between gap-2 mt-1">
+                    <span className="flex-1">1 x {receiptStudent.curso || 'Curso'}</span>
+                    <span className="font-mono">{money(receiptStudent.monto_abonado)}</span>
+                  </div>
+                  <div className="text-[10px] opacity-70 pl-3 flex items-center gap-1">
+                    Estado:
+                    <span
+                      className="px-1.5 py-0.5 rounded text-white text-[10px] font-bold"
+                      style={{ backgroundColor: receiptStudent.estado_pago === 'pagado' ? '#16a34a' : '#dc2626' }}
+                    >
+                      {receiptStudent.estado_pago === 'pagado' ? 'PAGADO' : 'SEÑADO'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-dashed border-gray-400 pt-2 flex justify-between font-bold text-base">
+                <span>TOTAL</span>
+                <span className="font-mono">{money(receiptStudent.monto_abonado)}</span>
+              </div>
+              <div className="text-center text-xs opacity-70 pt-1">¡Gracias por confiar en nosotros!</div>
             </div>
-            <div className="border-t border-dashed border-gray-400 pt-2 flex justify-between font-bold text-base">
-              <span>MONTO</span>
-              <span className="font-mono">{money(receiptStudent.monto_abonado)}</span>
-            </div>
-            <div className="text-center text-[10px] opacity-70 pt-1">¡Gracias por confiar en nosotros!</div>
-          </div>
-        </div>
-      )}
+          )}
+          <DialogFooter className="flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setReceiptOpen(false)}>Cerrar</Button>
+            <Button variant="outline" className="gap-2" onClick={downloadReceipt}><Download className="h-4 w-4" />Descargar Imagen</Button>
+            <Button className="gap-2 bg-[#25D366] hover:bg-[#1da851] text-white" onClick={shareReceipt}>
+              <ImageIcon className="h-4 w-4" />Copiar y Enviar por WhatsApp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
