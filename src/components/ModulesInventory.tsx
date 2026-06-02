@@ -148,7 +148,7 @@ export function ModulesInventory() {
                 <TableHead>Calidad</TableHead>
                 <TableHead>Color</TableHead>
                 <TableHead>Stock</TableHead>
-                <TableHead className="text-right">Costo</TableHead>
+                <TableHead className="text-right">Precio Gremio</TableHead>
                 <TableHead className="text-right">Venta</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -234,7 +234,7 @@ export function ModulesInventory() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Precio Costo</Label>
+              <Label className="text-xs">Precio Gremio</Label>
               <Input
                 type="number" inputMode="decimal" value={form.cost_price}
                 onFocus={e => { if (e.target.value === '0') e.target.select(); }}

@@ -316,7 +316,7 @@ export function AccessoriesPOS() {
                   <TableHead>Categoría</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead>Stock</TableHead>
-                  <TableHead className="text-right">Costo</TableHead>
+                  <TableHead className="text-right">Precio Gremio</TableHead>
                   <TableHead className="text-right">Venta</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -435,7 +435,7 @@ export function AccessoriesPOS() {
               <NumInput value={form.stock} onChange={n => setForm(f => ({ ...f, stock: n }))} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Precio Costo</Label>
+              <Label className="text-xs">Precio Gremio</Label>
               <NumInput value={form.cost_price} onChange={n => setForm(f => ({ ...f, cost_price: n }))} />
             </div>
             <div className="space-y-1 sm:col-span-2">
