@@ -300,7 +300,7 @@ export function AccessoriesPOS() {
           <ShoppingCart className="h-5 w-5 text-primary-foreground" />
         </div>
         <div>
-          <h2 className="text-lg font-bold">Inventario y Venta de Accesorios</h2>
+          <h2 className="text-lg font-bold">Ventas y Stock de Accesorios</h2>
           <p className="text-xs text-muted-foreground">Punto de venta de mostrador</p>
         </div>
       </div>
