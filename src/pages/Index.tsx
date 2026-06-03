@@ -146,7 +146,7 @@ export default function Index() {
     { title: 'Panel Principal', page: 'dashboard' as Page, icon: LayoutDashboard },
     { title: 'Caja del Día', page: 'cash' as Page, icon: Banknote },
     { title: 'Inventario de Módulos', page: 'inventory' as Page, icon: Boxes },
-    { title: 'Inventario y Venta de Accesorios', page: 'accessories' as Page, icon: ShoppingCart },
+    { title: 'Ventas y Stock de Accesorios', page: 'accessories' as Page, icon: ShoppingCart },
     { title: 'Ajustes', page: 'settings' as Page, icon: Settings },
     ...(isAdmin ? [{ title: 'Administración', page: 'admin' as Page, icon: Shield }] : []),
     ...(isAdmin ? [{ title: 'Curso', page: 'curso' as Page, icon: GraduationCap }] : []),
