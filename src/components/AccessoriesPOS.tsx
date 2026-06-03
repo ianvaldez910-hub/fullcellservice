@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ShoppingCart, Plus, Minus, Search, Trash2, Pencil, Receipt, Download, Image as ImageIcon, Printer } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Pencil, Receipt, Download, Image as ImageIcon, Printer } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 
@@ -56,7 +57,7 @@ function NumInput({ value, onChange, ...rest }: { value: number; onChange: (n: n
 export function AccessoriesPOS() {
   const { user, profile } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
-  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Product, 'id' | 'source'>>(emptyForm);
@@ -108,11 +109,16 @@ export function AccessoriesPOS() {
   };
   useEffect(() => { load(); }, [user?.id]);
 
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach(p => { if (p.category) set.add(p.category); });
+    return Array.from(set).sort();
+  }, [products]);
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(p => p.product_name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
-  }, [products, search]);
+    if (categoryFilter === 'all') return products;
+    return products.filter(p => p.category === categoryFilter);
+  }, [products, categoryFilter]);
 
   const openNew = () => { setEditingId(null); setForm(emptyForm); setOpen(true); };
   const openEdit = (p: Product) => {
@@ -303,9 +309,18 @@ export function AccessoriesPOS() {
         {/* LEFT: Stock */}
         <div className="lg:col-span-3 bg-card rounded-xl border shadow-sm">
           <div className="p-4 border-b flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por nombre o categoría..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+            <div className="flex-1 min-w-[200px]">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrar por categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las categorías</SelectItem>
+                  {categories.map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" />Agregar Artículo al Stock</Button>
           </div>
