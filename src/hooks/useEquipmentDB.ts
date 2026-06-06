@@ -70,6 +70,18 @@ export function useEquipmentDB() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
+  // Realtime: refetch on any change to equipment for this user (multiusuario)
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`equipment-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment', filter: `user_id=eq.${user.id}` }, () => {
+        fetchItems();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchItems]);
+
   const addEquipment = useCallback(async (data: Omit<EquipmentItem, 'id' | 'orderNumber'>) => {
     if (!user) return;
     const { data: nextNum } = await supabase.rpc('next_order_number', { _user_id: user.id });

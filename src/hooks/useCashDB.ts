@@ -34,6 +34,18 @@ export function useCashDB() {
 
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
 
+  // Realtime updates for multiusuario sync
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`cash-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_entries', filter: `user_id=eq.${user.id}` }, () => {
+        fetchEntries();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchEntries]);
+
   const addEntry = useCallback(async (entry: Omit<CashEntryItem, 'id'>) => {
     if (!user) return;
     await supabase.from('cash_entries').insert({

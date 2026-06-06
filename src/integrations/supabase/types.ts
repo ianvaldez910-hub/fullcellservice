@@ -305,6 +305,7 @@ export type Database = {
       sales_history: {
         Row: {
           created_at: string
+          customer_name: string
           id: string
           items_sold: Json
           total_amount: number
@@ -312,6 +313,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          customer_name?: string
           id?: string
           items_sold?: Json
           total_amount?: number
@@ -319,6 +321,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          customer_name?: string
           id?: string
           items_sold?: Json
           total_amount?: number

@@ -63,8 +63,9 @@ export function AccessoriesPOS() {
   const [form, setForm] = useState<Omit<Product, 'id' | 'source'>>(emptyForm);
   const [warrantyMode, setWarrantyMode] = useState<string>('0');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [customerName, setCustomerName] = useState<string>('');
   const [receiptOpen, setReceiptOpen] = useState(false);
-  const [lastSale, setLastSale] = useState<{ items: CartItem[]; total: number; date: string; id: string } | null>(null);
+  const [lastSale, setLastSale] = useState<{ items: CartItem[]; total: number; date: string; id: string; customer: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -108,6 +109,18 @@ export function AccessoriesPOS() {
     setProducts([...generals, ...modules]);
   };
   useEffect(() => { load(); }, [user?.id]);
+
+  // Realtime sync across devices
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`pos-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'general_products', filter: `user_id=eq.${user.id}` }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'modules_inventory', filter: `user_id=eq.${user.id}` }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -223,7 +236,7 @@ export function AccessoriesPOS() {
       }));
       const { data: sale, error: insErr } = await supabase
         .from('sales_history')
-        .insert({ user_id: user.id, items_sold, total_amount: total })
+        .insert({ user_id: user.id, items_sold, total_amount: total, customer_name: customerName.trim() || 'Consumidor Final' } as any)
         .select('id,created_at')
         .single();
       if (insErr) throw insErr;
@@ -243,12 +256,13 @@ export function AccessoriesPOS() {
         user_id: user.id,
         date: today,
         order_id: 0,
-        client_name: 'Venta Mostrador',
+        client_name: customerName.trim() || 'Consumidor Final',
         amount: total,
         concept: `Accesorios - ${itemsLabel}`,
       });
-      setLastSale({ items: cart, total, date: sale?.created_at || new Date().toISOString(), id: sale?.id || '' });
+      setLastSale({ items: cart, total, date: sale?.created_at || new Date().toISOString(), id: sale?.id || '', customer: customerName.trim() || 'Consumidor Final' });
       setCart([]);
+      setCustomerName('');
       setReceiptOpen(true);
       toast.success('Venta confirmada');
       await load();
@@ -300,7 +314,7 @@ export function AccessoriesPOS() {
           <ShoppingCart className="h-5 w-5 text-primary-foreground" />
         </div>
         <div>
-          <h2 className="text-lg font-bold">Ventas y Stock de Accesorios</h2>
+          <h2 className="text-lg font-bold">Inventario General</h2>
           <p className="text-xs text-muted-foreground">Punto de venta de mostrador</p>
         </div>
       </div>
@@ -376,6 +390,15 @@ export function AccessoriesPOS() {
             <Receipt className="h-4 w-4" />
             <h3 className="font-bold">Carrito de Venta</h3>
             <Badge variant="secondary" className="ml-auto">{cart.length} ítem{cart.length !== 1 ? 's' : ''}</Badge>
+          </div>
+          <div className="p-3 border-b space-y-1">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nombre del Cliente (opcional)</Label>
+            <Input
+              placeholder="Consumidor Final"
+              value={customerName}
+              onChange={e => setCustomerName(e.target.value)}
+              className="h-9"
+            />
           </div>
           <div className="p-3 space-y-2 flex-1 max-h-[500px] overflow-y-auto">
             {cart.length === 0 ? (
@@ -504,6 +527,7 @@ export function AccessoriesPOS() {
                 <p className="text-lg font-bold">{bName}</p>
                 {bAddress && <p className="text-[10px] opacity-70">{bAddress}</p>}
                 <p className="text-xs opacity-70 mt-1">Recibo · {new Date(lastSale.date).toLocaleString('es-AR')}</p>
+                <p className="text-xs font-semibold mt-1">Cliente: {lastSale.customer}</p>
               </div>
               <div className="space-y-1.5">
                 {lastSale.items.map((i, idx) => (

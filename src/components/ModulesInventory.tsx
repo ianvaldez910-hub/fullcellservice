@@ -46,6 +46,19 @@ export function ModulesInventory() {
 
   useEffect(() => { load(); }, [user?.id]);
 
+  // Realtime sync for multiusuario
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`modules-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'modules_inventory', filter: `user_id=eq.${user.id}` }, () => {
+        load();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return items;
