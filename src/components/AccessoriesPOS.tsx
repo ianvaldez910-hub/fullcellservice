@@ -391,6 +391,15 @@ export function AccessoriesPOS() {
             <h3 className="font-bold">Carrito de Venta</h3>
             <Badge variant="secondary" className="ml-auto">{cart.length} ítem{cart.length !== 1 ? 's' : ''}</Badge>
           </div>
+          <div className="p-3 border-b space-y-1">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nombre del Cliente (opcional)</Label>
+            <Input
+              placeholder="Consumidor Final"
+              value={customerName}
+              onChange={e => setCustomerName(e.target.value)}
+              className="h-9"
+            />
+          </div>
           <div className="p-3 space-y-2 flex-1 max-h-[500px] overflow-y-auto">
             {cart.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Agregá productos desde el catálogo</p>
