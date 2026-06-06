@@ -527,6 +527,7 @@ export function AccessoriesPOS() {
                 <p className="text-lg font-bold">{bName}</p>
                 {bAddress && <p className="text-[10px] opacity-70">{bAddress}</p>}
                 <p className="text-xs opacity-70 mt-1">Recibo · {new Date(lastSale.date).toLocaleString('es-AR')}</p>
+                <p className="text-xs font-semibold mt-1">Cliente: {lastSale.customer}</p>
               </div>
               <div className="space-y-1.5">
                 {lastSale.items.map((i, idx) => (
