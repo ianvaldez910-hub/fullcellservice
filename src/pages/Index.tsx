@@ -9,6 +9,7 @@ import { ReceiptDialog } from '@/components/ReceiptDialog';
 import { CashRegister } from '@/components/CashRegister';
 import { FinancialSummary } from '@/components/FinancialSummary';
 import { BusinessProfileSettings } from '@/components/BusinessProfileSettings';
+import { AppearanceSettings } from '@/components/AppearanceSettings';
 import { AdminPanel } from '@/components/AdminPanel';
 import { CursoPanel } from '@/components/CursoPanel';
 import { ModulesInventory } from '@/components/ModulesInventory';
@@ -146,7 +147,7 @@ export default function Index() {
     { title: 'Panel Principal', page: 'dashboard' as Page, icon: LayoutDashboard },
     { title: 'Caja del Día', page: 'cash' as Page, icon: Banknote },
     { title: 'Inventario de Módulos', page: 'inventory' as Page, icon: Boxes },
-    { title: 'Ventas y Stock de Accesorios', page: 'accessories' as Page, icon: ShoppingCart },
+    { title: 'Inventario General', page: 'accessories' as Page, icon: ShoppingCart },
     { title: 'Ajustes', page: 'settings' as Page, icon: Settings },
     ...(isAdmin ? [{ title: 'Administración', page: 'admin' as Page, icon: Shield }] : []),
     ...(isAdmin ? [{ title: 'Curso', page: 'curso' as Page, icon: GraduationCap }] : []),
@@ -281,7 +282,14 @@ export default function Index() {
               <div key="cash-page"><CashRegister /></div>
             )}
             {page === 'settings' && (
-              <div key="settings-page"><BusinessProfileSettings /></div>
+              <div key="settings-page" className="space-y-6">
+                <div className="bg-card rounded-xl border shadow-sm">
+                  <AppearanceSettings />
+                </div>
+                <div className="bg-card rounded-xl border shadow-sm">
+                  <BusinessProfileSettings />
+                </div>
+              </div>
             )}
             {page === 'admin' && (
               <div key="admin-page">
