@@ -1,4 +1,6 @@
-// Utilities to apply a dynamic primary color (HEX) to the CSS design tokens.
+// Utilities to apply a full dynamic theme (HEX) to the CSS design tokens.
+// Generates background, card, sidebar, muted, border, accent tones from a
+// single base color, with automatic text-contrast for light and dark modes.
 
 export function hexToHsl(hex: string): { h: number; s: number; l: number } {
   let c = hex.replace('#', '').trim();
@@ -22,39 +24,131 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } {
   return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
-export function hslString(hex: string): string {
-  const { h, s, l } = hexToHsl(hex);
-  return `${h} ${s}% ${l}%`;
-}
-
 export const COLOR_STORAGE_KEY = 'app-primary-color';
+export const THEME_MODE_KEY = 'theme';
 
-export function applyPrimaryColor(hex: string) {
+const TOKEN_KEYS = [
+  '--primary','--ring','--primary-foreground',
+  '--background','--foreground',
+  '--card','--card-foreground',
+  '--popover','--popover-foreground',
+  '--muted','--muted-foreground',
+  '--accent','--accent-foreground',
+  '--secondary','--secondary-foreground',
+  '--border','--input',
+  '--sidebar-background','--sidebar-foreground',
+  '--sidebar-primary','--sidebar-primary-foreground',
+  '--sidebar-accent','--sidebar-accent-foreground',
+  '--sidebar-border','--sidebar-ring',
+];
+
+export function applyTheme(hex: string, dark: boolean) {
   const { h, s, l } = hexToHsl(hex);
   const root = document.documentElement;
-  root.style.setProperty('--primary', `${h} ${s}% ${l}%`);
-  root.style.setProperty('--ring', `${h} ${s}% ${l}%`);
-  root.style.setProperty('--sidebar-primary', `${h} ${s}% ${l}%`);
-  // Pick readable foreground (white for darker primaries, near-black for very light)
-  const fg = l > 70 ? '220 25% 10%' : '0 0% 100%';
-  root.style.setProperty('--primary-foreground', fg);
-  root.style.setProperty('--sidebar-primary-foreground', fg);
+  const set = (k: string, v: string) => root.style.setProperty(k, v);
+
+  // Accent color (vibrant original)
+  set('--primary', `${h} ${s}% ${l}%`);
+  set('--ring', `${h} ${s}% ${l}%`);
+  set('--sidebar-primary', `${h} ${s}% ${l}%`);
+  const accentFg = l > 70 ? '220 25% 10%' : '0 0% 100%';
+  set('--primary-foreground', accentFg);
+  set('--sidebar-primary-foreground', accentFg);
+
+  if (dark) {
+    const sat = Math.min(s, 30);
+    set('--background', `${h} ${sat}% 8%`);
+    set('--card', `${h} ${sat}% 12%`);
+    set('--popover', `${h} ${sat}% 12%`);
+    set('--muted', `${h} ${sat}% 16%`);
+    set('--accent', `${h} ${sat}% 18%`);
+    set('--secondary', `${h} ${sat}% 18%`);
+    set('--border', `${h} ${sat}% 22%`);
+    set('--input', `${h} ${sat}% 22%`);
+    set('--foreground', `${h} 15% 95%`);
+    set('--card-foreground', `${h} 15% 95%`);
+    set('--popover-foreground', `${h} 15% 95%`);
+    set('--muted-foreground', `${h} 10% 65%`);
+    set('--accent-foreground', `${h} 15% 95%`);
+    set('--secondary-foreground', `${h} 15% 95%`);
+    set('--sidebar-background', `${h} ${sat}% 10%`);
+    set('--sidebar-foreground', `${h} 15% 90%`);
+    set('--sidebar-accent', `${h} ${sat}% 18%`);
+    set('--sidebar-accent-foreground', `${h} 15% 95%`);
+    set('--sidebar-border', `${h} ${sat}% 22%`);
+    set('--sidebar-ring', `${h} ${s}% ${l}%`);
+  } else {
+    const sat = Math.min(s, 45);
+    set('--background', `${h} ${sat}% 97%`);
+    set('--card', `0 0% 100%`);
+    set('--popover', `0 0% 100%`);
+    set('--muted', `${h} ${sat}% 94%`);
+    set('--accent', `${h} ${sat}% 92%`);
+    set('--secondary', `${h} ${sat}% 92%`);
+    set('--border', `${h} ${sat}% 88%`);
+    set('--input', `${h} ${sat}% 88%`);
+    set('--foreground', `${h} 25% 12%`);
+    set('--card-foreground', `${h} 25% 12%`);
+    set('--popover-foreground', `${h} 25% 12%`);
+    set('--muted-foreground', `${h} 10% 40%`);
+    set('--accent-foreground', `${h} 25% 20%`);
+    set('--secondary-foreground', `${h} 25% 20%`);
+    set('--sidebar-background', `${h} ${sat}% 98%`);
+    set('--sidebar-foreground', `${h} 25% 26%`);
+    set('--sidebar-accent', `${h} ${sat}% 92%`);
+    set('--sidebar-accent-foreground', `${h} 25% 15%`);
+    set('--sidebar-border', `${h} ${sat}% 88%`);
+    set('--sidebar-ring', `${h} ${s}% ${l}%`);
+  }
+}
+
+// Backwards-compatible export name used by AppearanceSettings.
+export function applyPrimaryColor(hex: string) {
+  const dark = document.documentElement.classList.contains('dark');
+  applyTheme(hex, dark);
   try { localStorage.setItem(COLOR_STORAGE_KEY, hex); } catch {}
+}
+
+export function saveTheme(hex: string, dark: boolean) {
+  try {
+    localStorage.setItem(COLOR_STORAGE_KEY, hex);
+    localStorage.setItem(THEME_MODE_KEY, dark ? 'dark' : 'light');
+  } catch {}
+  document.documentElement.classList.toggle('dark', dark);
+  applyTheme(hex, dark);
 }
 
 export function loadSavedPrimaryColor() {
   try {
     const hex = localStorage.getItem(COLOR_STORAGE_KEY);
-    if (hex) applyPrimaryColor(hex);
+    const stored = localStorage.getItem(THEME_MODE_KEY);
+    const dark = stored
+      ? stored === 'dark'
+      : (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', !!dark);
+    if (hex) applyTheme(hex, !!dark);
   } catch {}
 }
 
+export function resetTheme() {
+  try {
+    localStorage.removeItem(COLOR_STORAGE_KEY);
+    localStorage.removeItem(THEME_MODE_KEY);
+  } catch {}
+  const root = document.documentElement;
+  TOKEN_KEYS.forEach(k => root.style.removeProperty(k));
+  // Restore mode based on system preference
+  const prefersDark = typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  document.documentElement.classList.toggle('dark', !!prefersDark);
+}
+
 export const PRESET_PALETTES: { name: string; hex: string }[] = [
-  { name: 'Azul Zafiro', hex: '#1E40AF' },
-  { name: 'Verde Esmeralda', hex: '#059669' },
-  { name: 'Oro Rosa', hex: '#E11D88' },
+  { name: 'Rosa Sakura', hex: '#FF69B4' },
   { name: 'Rojo Carmesí', hex: '#DC2626' },
-  { name: 'Gris Titanio', hex: '#475569' },
+  { name: 'Azul Zafiro', hex: '#2563EB' },
+  { name: 'Verde Esmeralda', hex: '#059669' },
   { name: 'Violeta Amatista', hex: '#7C3AED' },
   { name: 'Naranja Sunset', hex: '#F59E0B' },
+  { name: 'Turquesa', hex: '#0EA5A4' },
+  { name: 'Negro Nocturno', hex: '#0F172A' },
 ];

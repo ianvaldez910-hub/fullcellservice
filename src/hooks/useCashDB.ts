@@ -38,7 +38,7 @@ export function useCashDB() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel(`cash-${user.id}`)
+      .channel(`cash-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_entries', filter: `user_id=eq.${user.id}` }, () => {
         fetchEntries();
       })
