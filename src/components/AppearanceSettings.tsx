@@ -1,18 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Palette, Sun, Moon, Check, Pipette } from 'lucide-react';
+import { Palette, Sun, Moon, Check, Pipette, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { applyPrimaryColor, COLOR_STORAGE_KEY, PRESET_PALETTES } from '@/lib/color';
+import { COLOR_STORAGE_KEY, PRESET_PALETTES, saveTheme, resetTheme } from '@/lib/color';
 import { toast } from 'sonner';
 
-function isDarkMode() {
-  if (typeof document === 'undefined') return false;
-  return document.documentElement.classList.contains('dark');
-}
+const DEFAULT_HEX = '#2563EB';
 
 export function AppearanceSettings() {
   const [dark, setDark] = useState<boolean>(false);
-  const [color, setColor] = useState<string>('#1E40AF');
+  const [color, setColor] = useState<string>(DEFAULT_HEX);
 
   useEffect(() => {
     const stored = localStorage.getItem('theme');
@@ -22,15 +19,22 @@ export function AppearanceSettings() {
     if (savedColor) setColor(savedColor);
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('theme', dark ? 'dark' : 'light');
-  }, [dark]);
+  const toggleMode = (next: boolean) => {
+    setDark(next);
+    saveTheme(color, next);
+  };
 
   const pick = (hex: string) => {
     setColor(hex);
-    applyPrimaryColor(hex);
-    toast.success('Color principal actualizado');
+    saveTheme(hex, dark);
+    toast.success('Tema actualizado');
+  };
+
+  const handleReset = () => {
+    resetTheme();
+    setColor(DEFAULT_HEX);
+    setDark(document.documentElement.classList.contains('dark'));
+    toast.success('Tema restablecido al original');
   };
 
   return (
@@ -51,14 +55,14 @@ export function AppearanceSettings() {
         <div className="inline-flex rounded-xl border bg-card p-1 shadow-sm">
           <button
             type="button"
-            onClick={() => setDark(false)}
+            onClick={() => toggleMode(false)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${!dark ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted'}`}
           >
             <Sun className="h-4 w-4" /> Tema Claro
           </button>
           <button
             type="button"
-            onClick={() => setDark(true)}
+            onClick={() => toggleMode(true)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${dark ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted'}`}
           >
             <Moon className="h-4 w-4" /> Tema Oscuro
@@ -114,9 +118,11 @@ export function AppearanceSettings() {
               <Pipette className="h-4 w-4 text-muted-foreground" />
             </span>
           </label>
-          <Button variant="outline" size="sm" onClick={() => pick('#2563EB')}>Restablecer</Button>
+          <Button variant="outline" size="sm" onClick={handleReset} className="gap-2">
+            <RotateCcw className="h-4 w-4" /> Restablecer Tema por Defecto
+          </Button>
         </div>
-        <p className="text-[11px] text-muted-foreground">El color se guarda en este dispositivo y se aplica de inmediato a botones, enlaces, bordes activos e iconos.</p>
+        <p className="text-[11px] text-muted-foreground">El tema se guarda únicamente en este dispositivo. Cada computadora o celular puede tener su propio color sin afectar al resto.</p>
       </div>
     </div>
   );
