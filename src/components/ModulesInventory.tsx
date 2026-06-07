@@ -50,7 +50,7 @@ export function ModulesInventory() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel(`modules-${user.id}`)
+      .channel(`modules-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'modules_inventory', filter: `user_id=eq.${user.id}` }, () => {
         load();
       })

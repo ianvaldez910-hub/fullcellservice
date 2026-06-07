@@ -23,10 +23,19 @@ import {
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarProvider, SidebarTrigger,
 } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/sidebar';
+import { useEffect } from 'react';
 import { Plus, Search, Wrench, LayoutDashboard, Settings, Banknote, Shield, LogOut, Zap, GraduationCap, Boxes, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Page = 'dashboard' | 'settings' | 'cash' | 'admin' | 'curso' | 'inventory' | 'accessories';
+const VALID_PAGES: Page[] = ['dashboard','settings','cash','admin','curso','inventory','accessories'];
+
+function pageFromHash(): Page {
+  if (typeof window === 'undefined') return 'dashboard';
+  const h = window.location.hash.replace('#', '') as Page;
+  return VALID_PAGES.includes(h) ? h : 'dashboard';
+}
 
 function itemToEquipment(item: EquipmentItem): Equipment {
   return {
@@ -59,7 +68,28 @@ export default function Index() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<EquipmentItem | undefined>();
   const [receiptItem, setReceiptItem] = useState<Equipment | null>(null);
-  const [page, setPage] = useState<Page>('dashboard');
+  const [page, setPageState] = useState<Page>(pageFromHash);
+
+  // Sync page changes with the browser history so the device back button
+  // returns to the previous section instead of leaving the app.
+  const setPage = (next: Page) => {
+    if (next === page) return;
+    setPageState(next);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ page: next }, '', `#${next}`);
+    }
+  };
+
+  useEffect(() => {
+    const onPop = () => setPageState(pageFromHash());
+    window.addEventListener('popstate', onPop);
+    // Ensure the initial entry has a state so back returns properly.
+    if (!window.history.state) {
+      window.history.replaceState({ page }, '', `#${page}`);
+    }
+    return () => window.removeEventListener('popstate', onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const equipmentList = useMemo(() => items.map(itemToEquipment), [items]);
 
@@ -172,22 +202,9 @@ export default function Index() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {menuItems.map(item => (
-                    <SidebarMenuItem key={item.page}>
-                      <SidebarMenuButton
-                        onClick={() => setPage(item.page)}
-                        className={page === item.page ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : ''}
-                      >
-                        <item.icon className="mr-2 h-4 w-4" />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    <NavItem key={item.page} active={page === item.page} onSelect={() => setPage(item.page)} icon={item.icon} title={item.title} />
                   ))}
-                  <SidebarMenuItem>
-                    <SidebarMenuButton onClick={signOut} className="text-destructive">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Cerrar Sesión</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <NavItem onSelect={signOut} icon={LogOut} title="Cerrar Sesión" className="text-destructive" />
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -314,5 +331,25 @@ export default function Index() {
       <EquipmentForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={handleSubmit} initialData={editingItem ? itemToEquipment(editingItem) : undefined} />
       <ReceiptDialog open={!!receiptItem} onClose={() => setReceiptItem(null)} item={receiptItem} />
     </SidebarProvider>
+  );
+}
+
+// Sidebar menu item that automatically closes the mobile drawer on tap and
+// keeps the active state styling intact.
+function NavItem({ icon: Icon, title, onSelect, active, className }: { icon: any; title: string; onSelect: () => void; active?: boolean; className?: string }) {
+  const { isMobile, setOpenMobile } = useSidebar();
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        onClick={() => {
+          if (isMobile) setOpenMobile(false);
+          onSelect();
+        }}
+        className={`${active ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : ''} ${className || ''}`}
+      >
+        <Icon className="mr-2 h-4 w-4" />
+        <span>{title}</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }

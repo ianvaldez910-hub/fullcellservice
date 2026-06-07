@@ -114,7 +114,7 @@ export function AccessoriesPOS() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel(`pos-${user.id}`)
+      .channel(`pos-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'general_products', filter: `user_id=eq.${user.id}` }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'modules_inventory', filter: `user_id=eq.${user.id}` }, () => load())
       .subscribe();
