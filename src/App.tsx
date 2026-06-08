@@ -10,11 +10,23 @@ import Auth from "./pages/Auth";
 import TrialExpired from "./pages/TrialExpired";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
+import Tracking from "./pages/Tracking";
 
 const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading, isLicenseValid, profile, isAdmin } = useAuth();
+
+  // Public tracking route — bypasses auth entirely
+  const path = typeof window !== 'undefined' ? window.location.pathname : '';
+  if (path === '/seguimiento' || path === '/consulta') {
+    return (
+      <Routes>
+        <Route path="/seguimiento" element={<Tracking />} />
+        <Route path="/consulta" element={<Tracking />} />
+      </Routes>
+    );
+  }
 
   if (loading) {
     return (
@@ -56,6 +68,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
+      <Route path="/seguimiento" element={<Tracking />} />
+      <Route path="/consulta" element={<Tracking />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
