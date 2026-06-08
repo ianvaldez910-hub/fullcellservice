@@ -368,6 +368,21 @@ export type Database = {
         Args: { _months: number; _user_id: string }
         Returns: undefined
       }
+      track_repair: {
+        Args: { _query: string }
+        Returns: {
+          brand: string
+          budget: number
+          business_name: string
+          date_estimated: string
+          date_in: string
+          model: string
+          order_number: number
+          problem: string
+          status: Database["public"]["Enums"]["equipment_status"]
+          whatsapp_number: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
