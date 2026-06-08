@@ -1,5 +1,16 @@
 import { Equipment } from '@/types/equipment';
 
+const TRACKING_BASE_URL =
+  (typeof window !== 'undefined' ? window.location.origin : 'https://fullcellservice.lovable.app');
+
+const STATUS_EMOJI: Record<string, string> = {
+  'Pendiente': '⏳',
+  'En Reparación': '🛠️',
+  'Esperando Repuesto': '📦',
+  'Listo': '✅',
+  'Entregado': '🤝',
+};
+
 /**
  * Format phone for Argentina WhatsApp: expects number without 0 or 15
  * e.g. "1155667788" → "5491155667788"
@@ -12,11 +23,19 @@ export function formatPhoneForWhatsApp(phone: string): string {
 }
 
 export function buildWhatsAppReadyMessage(item: Equipment, businessName?: string): string {
-  const remaining = (item.budget || 0) - (item.deposit || 0);
-  const from = businessName || 'el servicio técnico';
-  let msg = `Hola ${item.clientName}, te informamos desde ${from} que tu ${item.brand} ${item.model} ya se encuentra listo para retirar. El saldo pendiente es de $${remaining.toLocaleString()}. ¡Te esperamos!`;
+  const from = businessName || 'FullCell Service';
+  const emoji = STATUS_EMOJI[item.status] || '🔔';
+  const trackingUrl = `${TRACKING_BASE_URL}/seguimiento?orden=${item.id}`;
+  let msg =
+    `¡Hola ${item.clientName}! 👋 Te informamos desde ${from} que el estado de tu ` +
+    `${item.brand} ${item.model} ha cambiado a: ${emoji} ${item.status}.`;
+  if (item.status === 'Listo') {
+    const remaining = (item.budget || 0) - (item.deposit || 0);
+    msg += ` Saldo pendiente: $${remaining.toLocaleString()}.`;
+  }
+  msg += `\n\nSeguimiento en vivo: ${trackingUrl}`;
   if (item.hasHumidity) {
-    msg += `\n\n⚠️ Nota: El equipo fue ingresado con evidencia de humedad/sulfato.`;
+    msg += `\n\n⚠️ Nota: el equipo fue ingresado con evidencia de humedad/sulfato.`;
   }
   return msg;
 }
