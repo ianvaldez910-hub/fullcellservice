@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Loader2, Search, Wrench, Package, CheckCircle2, PartyPopper, MessageCircle, Clock } from 'lucide-react';
+import {
+  Loader2,
+  Search,
+  Wrench,
+  Package,
+  CheckCircle2,
+  PartyPopper,
+  MessageCircle,
+  ArrowLeft,
+  AlertCircle,
+} from 'lucide-react';
 
 type TrackResult = {
   order_number: number;
@@ -18,10 +26,10 @@ type TrackResult = {
 };
 
 const STEPS = [
-  { key: 'received', label: 'Recibido', icon: Clock, statuses: ['Pendiente'] },
-  { key: 'waiting', label: 'Esperando Repuesto', icon: Package, statuses: ['Esperando Repuesto'] },
-  { key: 'repair',  label: 'En Reparación',     icon: Wrench, statuses: ['En Reparación'] },
-  { key: 'ready',   label: '¡Listo para Entregar!', icon: PartyPopper, statuses: ['Listo', 'Entregado'] },
+  { key: 'received', label: 'Recibido / Registrado',  icon: CheckCircle2 },
+  { key: 'waiting',  label: 'Esperando Repuesto',     icon: Package },
+  { key: 'repair',   label: 'En Reparación',          icon: Wrench },
+  { key: 'ready',    label: '¡Listo para Entregar!',  icon: PartyPopper },
 ] as const;
 
 function activeIndex(status: TrackResult['status']): number {
@@ -38,7 +46,8 @@ export default function Tracking() {
     return u.searchParams.get('orden') || u.searchParams.get('q') || '';
   }, []);
 
-  const [query, setQuery] = useState(initialQuery);
+  const [orderInput, setOrderInput] = useState(initialQuery);
+  const [phoneInput, setPhoneInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<TrackResult[] | null>(null);
@@ -46,7 +55,7 @@ export default function Tracking() {
   const handleSearch = async (q: string) => {
     const trimmed = q.trim();
     if (!trimmed) {
-      setError('Ingresá tu número de orden o teléfono.');
+      setError('Ingresá tu número de orden o tu celular.');
       return;
     }
     setLoading(true);
@@ -54,9 +63,28 @@ export default function Tracking() {
     setResults(null);
     const { data, error } = await (supabase as any).rpc('track_repair', { _query: trimmed });
     setLoading(false);
-    if (error) { setError('No pudimos consultar el estado. Probá de nuevo.'); return; }
-    if (!data || data.length === 0) { setError('No encontramos ninguna reparación con esos datos.'); return; }
+    if (error) {
+      setError('No pudimos consultar el estado. Probá de nuevo.');
+      return;
+    }
+    if (!data || data.length === 0) {
+      setError('No encontramos ninguna reparación con esos datos.');
+      return;
+    }
     setResults(data as TrackResult[]);
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = orderInput.trim() || phoneInput.trim();
+    handleSearch(q);
+  };
+
+  const resetSearch = () => {
+    setResults(null);
+    setError(null);
+    setOrderInput('');
+    setPhoneInput('');
   };
 
   useEffect(() => {
@@ -65,55 +93,150 @@ export default function Tracking() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
-      <header className="border-b bg-card/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-            <Wrench className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="font-bold leading-tight">Seguimiento de Reparación</h1>
-            <p className="text-xs text-muted-foreground">Consultá el estado de tu equipo en tiempo real</p>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased px-4 py-8 sm:py-12 flex flex-col items-center">
+      {/* Soft pink glow background */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[420px] w-[420px] rounded-full bg-pink-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-fuchsia-500/5 blur-3xl" />
+      </div>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-        <div className="bg-card rounded-2xl border shadow-sm p-5">
-          <label className="text-sm font-medium mb-2 block">Número de orden o teléfono</label>
-          <form
-            className="flex flex-col sm:flex-row gap-2"
-            onSubmit={(e) => { e.preventDefault(); handleSearch(query); }}
-          >
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ej: 123  ó  1155667788"
-              className="h-12 text-base"
-              inputMode="text"
-              autoFocus
-            />
-            <Button type="submit" size="lg" className="h-12 gap-2" disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              Consultar
-            </Button>
-          </form>
-          {error && <p className="text-sm text-destructive mt-3">{error}</p>}
-        </div>
+      <div className="relative z-10 w-full max-w-md">
+        {!results ? (
+          <SearchScreen
+            orderInput={orderInput}
+            setOrderInput={setOrderInput}
+            phoneInput={phoneInput}
+            setPhoneInput={setPhoneInput}
+            onSubmit={onSubmit}
+            loading={loading}
+            error={error}
+          />
+        ) : (
+          <ResultsScreen results={results} onBack={resetSearch} />
+        )}
 
-        {results && results.map((r) => <RepairCard key={r.order_number} data={r} />)}
-
-        <p className="text-center text-xs text-muted-foreground py-4">
-          Powered by FullCell Service
+        <p className="text-center text-xs text-slate-600 mt-8">
+          Powered by <span className="text-pink-500/80 font-medium">FullCell Service</span>
         </p>
-      </main>
+      </div>
+    </div>
+  );
+}
+
+function SearchScreen({
+  orderInput,
+  setOrderInput,
+  phoneInput,
+  setPhoneInput,
+  onSubmit,
+  loading,
+  error,
+}: {
+  orderInput: string;
+  setOrderInput: (v: string) => void;
+  phoneInput: string;
+  setPhoneInput: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  loading: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl shadow-pink-500/5 p-6 sm:p-8">
+      <div className="flex flex-col items-center text-center">
+        <div className="bg-pink-500/10 p-3 rounded-2xl text-pink-500 border border-pink-500/20">
+          <Wrench className="h-6 w-6" />
+        </div>
+        <h1 className="mt-4 text-2xl font-bold text-white tracking-tight">
+          Consulta de Reparación
+        </h1>
+        <p className="mt-2 text-sm text-slate-400 max-w-xs">
+          Ingresá tu número de orden o tu celular para ver el estado de tu equipo en tiempo real.
+        </p>
+      </div>
+
+      <form onSubmit={onSubmit} className="mt-7 space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-slate-400 mb-1.5">
+            Número de Orden
+          </label>
+          <input
+            value={orderInput}
+            onChange={(e) => setOrderInput(e.target.value)}
+            placeholder="Ej: 123"
+            inputMode="numeric"
+            className="w-full bg-slate-900 border border-slate-800 text-white placeholder-slate-600 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500/20 rounded-xl px-4 py-3 transition"
+          />
+        </div>
+
+        <div className="flex items-center gap-3 my-2">
+          <div className="flex-1 h-px bg-slate-800" />
+          <span className="text-xs uppercase tracking-wider text-slate-600">O también</span>
+          <div className="flex-1 h-px bg-slate-800" />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-400 mb-1.5">
+            Número de Celular
+          </label>
+          <input
+            value={phoneInput}
+            onChange={(e) => setPhoneInput(e.target.value)}
+            placeholder="Ej: 1155667788"
+            inputMode="tel"
+            className="w-full bg-slate-900 border border-slate-800 text-white placeholder-slate-600 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500/20 rounded-xl px-4 py-3 transition"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 bg-pink-500 hover:bg-pink-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition duration-150 shadow-lg shadow-pink-500/20"
+        >
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Search className="h-5 w-5" />
+          )}
+          {loading ? 'Buscando...' : 'Consultar Estado'}
+        </button>
+
+        {error && (
+          <div className="mt-2 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-sm text-rose-300">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
+
+function ResultsScreen({
+  results,
+  onBack,
+}: {
+  results: TrackResult[];
+  onBack: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-pink-500 transition px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/50 hover:border-pink-500/30"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Realizar otra consulta
+      </button>
+
+      {results.map((r) => (
+        <RepairCard key={r.order_number} data={r} />
+      ))}
     </div>
   );
 }
 
 function RepairCard({ data }: { data: TrackResult }) {
   const idx = activeIndex(data.status);
-  const isReady = data.status === 'Listo' || data.status === 'Entregado';
   const waPhone = (data.whatsapp_number || '').replace(/\D/g, '');
   const waMsg = encodeURIComponent(
     `¡Hola! Consulto por mi reparación #${data.order_number} (${data.brand} ${data.model}).`
@@ -121,57 +244,60 @@ function RepairCard({ data }: { data: TrackResult }) {
   const waUrl = waPhone ? `https://wa.me/${waPhone}?text=${waMsg}` : null;
 
   return (
-    <div className={`rounded-2xl border shadow-sm overflow-hidden ${isReady ? 'border-emerald-500/40 bg-gradient-to-br from-emerald-500/5 to-transparent' : 'bg-card'}`}>
-      <div className="p-5 border-b">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Orden</p>
-            <p className="font-mono font-bold text-2xl">#{data.order_number}</p>
-          </div>
-          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${isReady ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-primary/10 text-primary'}`}>
-            {data.status}
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl shadow-pink-500/5 overflow-hidden">
+      <div className="p-6 border-b border-slate-800">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <span className="text-xs font-bold text-pink-500 bg-pink-500/10 px-2.5 py-1 rounded-full border border-pink-500/20">
+            Orden #{data.order_number}
+          </span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-500">
+            {data.business_name}
           </span>
         </div>
-        <p className="mt-3 font-semibold">{data.brand} {data.model}</p>
-        {data.problem && <p className="text-sm text-muted-foreground mt-1">{data.problem}</p>}
-        <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
-          <div>
-            <p className="text-xs text-muted-foreground">Ingreso</p>
-            <p className="font-medium">{data.date_in}</p>
-          </div>
+
+        <h2 className="text-xl font-bold text-white leading-tight">
+          {data.brand} {data.model}
+        </h2>
+        {data.problem && (
+          <p className="text-sm text-slate-400 mt-1.5">{data.problem}</p>
+        )}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-slate-500">Ingreso:</span>
+          <span className="text-slate-300 font-medium">{data.date_in}</span>
           {data.date_estimated && (
-            <div>
-              <p className="text-xs text-muted-foreground">Entrega estimada</p>
-              <p className="font-medium">{data.date_estimated}</p>
-            </div>
-          )}
-          {data.budget > 0 && (
-            <div className="col-span-2">
-              <p className="text-xs text-muted-foreground">Presupuesto</p>
-              <p className="font-mono font-semibold">${Number(data.budget).toLocaleString()}</p>
-            </div>
+            <>
+              <span className="text-slate-700">•</span>
+              <span className="text-slate-500">Entrega est.:</span>
+              <span className="text-slate-300 font-medium">{data.date_estimated}</span>
+            </>
           )}
         </div>
-      </div>
 
-      <div className="p-5">
-        <Timeline activeIdx={idx} />
-        {isReady && (
-          <div className="mt-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 text-center">
-            <PartyPopper className="h-6 w-6 mx-auto text-emerald-600 dark:text-emerald-400 mb-1" />
-            <p className="font-semibold text-emerald-700 dark:text-emerald-300">¡Tu equipo está listo para retirar!</p>
-            <p className="text-xs text-muted-foreground mt-1">Acercate al local en el horario de atención.</p>
+        {data.budget > 0 && (
+          <div className="mt-3 inline-flex items-center gap-2">
+            <span className="text-xs text-slate-500">Presupuesto:</span>
+            <span className="text-emerald-400 bg-emerald-500/5 border border-emerald-500/15 py-1 px-2.5 rounded-lg text-sm font-mono font-semibold">
+              ${Number(data.budget).toLocaleString()}
+            </span>
           </div>
         )}
       </div>
 
+      <div className="p-6">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">
+          Estado del proceso
+        </p>
+        <Timeline activeIdx={idx} />
+      </div>
+
       {waUrl && (
-        <div className="p-5 pt-0">
+        <div className="p-6 pt-0">
           <a href={waUrl} target="_blank" rel="noopener noreferrer">
-            <Button className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white h-12">
+            <button className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl transition duration-150 shadow-lg shadow-emerald-500/10">
               <MessageCircle className="h-5 w-5" />
-              Consultar al técnico por WhatsApp
-            </Button>
+              Consultar al técnico
+            </button>
           </a>
         </div>
       )}
@@ -186,28 +312,49 @@ function Timeline({ activeIdx }: { activeIdx: number }) {
         const Icon = s.icon;
         const done = i < activeIdx;
         const current = i === activeIdx;
-        const pending = i > activeIdx;
+        const isLast = i === STEPS.length - 1;
+        const lit = done || current;
+
         return (
-          <li key={s.key} className="flex gap-4 pb-6 last:pb-0 relative">
-            {i < STEPS.length - 1 && (
+          <li key={s.key} className="flex gap-4 pb-5 last:pb-0 relative">
+            {!isLast && (
               <span
-                className={`absolute left-5 top-10 bottom-0 w-0.5 ${done ? 'bg-primary' : 'bg-border'}`}
+                className={`absolute left-[18px] top-10 bottom-0 w-0.5 ${
+                  done ? 'bg-pink-500' : 'bg-slate-800'
+                }`}
                 aria-hidden
               />
             )}
             <div
-              className={`relative z-10 h-10 w-10 rounded-full flex items-center justify-center border-2 transition-all
-                ${done ? 'bg-primary border-primary text-primary-foreground' : ''}
-                ${current ? 'bg-primary/15 border-primary text-primary animate-pulse' : ''}
-                ${pending ? 'bg-muted border-border text-muted-foreground' : ''}`}
+              className={`relative z-10 h-9 w-9 rounded-full flex items-center justify-center border transition-all shrink-0 ${
+                done
+                  ? 'bg-pink-500 border-pink-500 text-white shadow-lg shadow-pink-500/30'
+                  : current
+                  ? 'bg-pink-500/10 border-pink-500 text-pink-500 ring-4 ring-pink-500/10 animate-pulse'
+                  : 'bg-slate-900 border-slate-800 text-slate-600'
+              }`}
             >
-              {done ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+              {done ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : current && isLast ? (
+                <span className="text-base">🎉</span>
+              ) : (
+                <Icon className="h-4 w-4" />
+              )}
             </div>
             <div className="flex-1 pt-1.5">
-              <p className={`font-medium ${current ? 'text-foreground' : done ? 'text-foreground' : 'text-muted-foreground'}`}>
+              <p
+                className={`text-sm font-medium ${
+                  lit ? 'text-white' : 'text-slate-500'
+                }`}
+              >
                 {s.label}
               </p>
-              {current && <p className="text-xs text-primary mt-0.5">Etapa actual</p>}
+              {current && (
+                <p className="text-xs text-pink-500 mt-0.5 font-medium">
+                  Etapa actual
+                </p>
+              )}
             </div>
           </li>
         );
