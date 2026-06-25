@@ -115,3 +115,15 @@
     font-family: 'JetBrains Mono', monospace;
   }
 }
+
+/* Hide Lovable edit badge on production deployments */
+#lovable-badge,
+.lovable-badge,
+[id*="lovable-badge"],
+[class*="lovable-badge"],
+a[href*="lovable.dev"][target="_blank"][rel*="noopener"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
