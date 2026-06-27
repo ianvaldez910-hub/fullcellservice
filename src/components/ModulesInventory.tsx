@@ -138,7 +138,7 @@ export function ModulesInventory() {
           <Boxes className="h-5 w-5 text-primary-foreground" />
         </div>
         <div className="flex-1">
-          <h2 className="text-lg font-bold">Inventario de Módulos</h2>
+          <h2 className="text-lg font-bold">Inventario de Módulos y Repuestos</h2>
           <p className="text-xs text-muted-foreground">Gestión de repuestos en stock</p>
         </div>
         <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" />Agregar Módulo</Button>
