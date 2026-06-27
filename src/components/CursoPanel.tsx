@@ -9,7 +9,8 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DialogFooter } from '@/components/ui/dialog';
-import { GraduationCap, Plus, Trash2, Loader2, Receipt, Download, Image as ImageIcon } from 'lucide-react';
+import { GraduationCap, Plus, Trash2, Loader2, Receipt, Download, Image as ImageIcon, Users } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 
@@ -22,12 +23,19 @@ interface Student {
   monto_abonado: number;
   curso: string;
   fecha_registro: string;
+  edition?: string | null;
+  clase_1?: boolean;
+  clase_2?: boolean;
+  clase_3?: boolean;
+  clase_4?: boolean;
 }
 
 const ESTADOS = [
   { value: 'pagado', label: 'Pagado' },
   { value: 'señado', label: 'Señado' },
 ];
+
+const DEFAULT_EDITIONS = ['Edición 1', 'Edición 2', 'Edición 3', 'Edición 4'];
 
 const money = (n: number) => `$${(Number(n) || 0).toLocaleString('es-AR')}`;
 
@@ -45,8 +53,9 @@ export function CursoPanel() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     nombre: '', apellido: '', telefono: '', estado_pago: 'señado',
-    monto_abonado: 0, curso: '',
+    monto_abonado: 0, curso: '', edition: 'Edición 1',
   });
+  const [activeEdition, setActiveEdition] = useState<string>('all');
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -83,6 +92,7 @@ export function CursoPanel() {
       estado_pago: form.estado_pago,
       monto_abonado: Number(form.monto_abonado) || 0,
       curso: form.curso.trim(),
+      edition: form.edition || null,
     });
     setSaving(false);
     if (error) {
@@ -90,7 +100,7 @@ export function CursoPanel() {
       return;
     }
     toast.success('Alumno registrado');
-    setForm({ nombre: '', apellido: '', telefono: '', estado_pago: 'señado', monto_abonado: 0, curso: '' });
+    setForm({ nombre: '', apellido: '', telefono: '', estado_pago: 'señado', monto_abonado: 0, curso: '', edition: form.edition });
     fetchStudents();
   };
 
@@ -122,6 +132,38 @@ export function CursoPanel() {
     setStudents(s => s.filter(st => st.id !== id));
     toast.success('Alumno eliminado');
   };
+
+  const updateEdition = async (id: string, edition: string) => {
+    setStudents(s => s.map(st => st.id === id ? { ...st, edition } : st));
+    const { error } = await supabase.from('course_students' as any).update({ edition }).eq('id', id);
+    if (error) toast.error('Error actualizando edición');
+  };
+
+  const toggleClase = async (id: string, field: 'clase_1' | 'clase_2' | 'clase_3' | 'clase_4', value: boolean) => {
+    setStudents(s => s.map(st => st.id === id ? { ...st, [field]: value } : st));
+    const { error } = await supabase.from('course_students' as any).update({ [field]: value }).eq('id', id);
+    if (error) toast.error('Error actualizando asistencia');
+  };
+
+  // Editions present in data ∪ defaults
+  const editions = useMemo(() => {
+    const set = new Set<string>(DEFAULT_EDITIONS);
+    students.forEach(s => { if (s.edition) set.add(s.edition); });
+    return Array.from(set).sort();
+  }, [students]);
+
+  // Group by edition
+  const grouped = useMemo(() => {
+    const list = activeEdition === 'all' ? editions : [activeEdition];
+    return list.map(ed => ({
+      edition: ed,
+      students: students.filter(s => (s.edition || 'Sin asignar') === ed),
+    })).concat(
+      activeEdition === 'all'
+        ? [{ edition: 'Sin asignar', students: students.filter(s => !s.edition) }]
+        : []
+    ).filter(g => g.students.length > 0 || activeEdition !== 'all');
+  }, [students, editions, activeEdition]);
 
   const openReceipt = (s: Student) => {
     setReceiptStudent(s);
@@ -183,6 +225,23 @@ export function CursoPanel() {
         </div>
       </div>
 
+      {/* Filtros por Edición */}
+      <div className="flex flex-wrap gap-2 items-center bg-card border rounded-xl p-3">
+        <span className="text-xs font-semibold text-muted-foreground mr-1">Edición:</span>
+        <Button size="sm" variant={activeEdition === 'all' ? 'default' : 'outline'} onClick={() => setActiveEdition('all')}>Ver Todos</Button>
+        {editions.map(ed => (
+          <Button
+            key={ed}
+            size="sm"
+            variant={activeEdition === ed ? 'default' : 'outline'}
+            className={activeEdition === ed ? 'bg-pink-600 hover:bg-pink-700 text-white' : ''}
+            onClick={() => setActiveEdition(ed)}
+          >
+            {ed}
+          </Button>
+        ))}
+      </div>
+
       <div className="bg-card rounded-xl border shadow-sm p-4 space-y-3">
         <h3 className="font-semibold text-sm">Nuevo alumno</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -207,6 +266,12 @@ export function CursoPanel() {
             value={form.curso}
             onChange={e => setForm(f => ({ ...f, curso: e.target.value }))}
           />
+          <Select value={form.edition} onValueChange={v => setForm(f => ({ ...f, edition: v }))}>
+            <SelectTrigger><SelectValue placeholder="Edición" /></SelectTrigger>
+            <SelectContent>
+              {editions.map(ed => <SelectItem key={ed} value={ed}>{ed}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Input
             type="number"
             inputMode="decimal"
@@ -228,81 +293,118 @@ export function CursoPanel() {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border shadow-sm overflow-x-auto">
-        {loading ? (
-          <div className="p-8 text-center text-muted-foreground">Cargando alumnos...</div>
-        ) : students.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">Sin alumnos todavía.</div>
-        ) : (
-          <table className="w-full text-sm min-w-[900px]">
-            <thead>
-              <tr className="border-b">
-                <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Nombre</th>
-                <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Apellido</th>
-                <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Teléfono</th>
-                <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Curso</th>
-                <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Monto</th>
-                <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Estado</th>
-                <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Fecha</th>
-                <th className="p-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map(s => (
-                <tr key={s.id} className="border-b border-border/50 hover:bg-muted/50">
-                  <td className="p-3 font-medium">{s.nombre || '—'}</td>
-                  <td className="p-3">{s.apellido || '—'}</td>
-                  <td className="p-3 font-mono text-xs">{s.telefono || '—'}</td>
-                  <td className="p-3 text-xs">{s.curso || '—'}</td>
-                  <td className="p-3">
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      className="h-8 w-24 text-xs"
-                      value={s.monto_abonado ?? 0}
-                      onFocus={e => { if (e.target.value === '0') e.target.select(); }}
-                      onChange={e => updateMonto(s.id, Number(e.target.value) || 0)}
-                    />
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      {estadoBadge(s.estado_pago)}
-                      <Select value={s.estado_pago} onValueChange={v => updateEstado(s.id, v)}>
-                        <SelectTrigger className="h-7 w-24 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ESTADOS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+      {loading ? (
+        <div className="p-8 text-center text-muted-foreground bg-card rounded-xl border">Cargando alumnos...</div>
+      ) : students.length === 0 ? (
+        <div className="p-8 text-center text-muted-foreground bg-card rounded-xl border">Sin alumnos todavía.</div>
+      ) : (
+        <div className="space-y-5">
+          {grouped.map(group => {
+            const total = group.students.length;
+            const totalClases = total * 4;
+            const completadas = group.students.reduce((acc, st) =>
+              acc + (st.clase_1 ? 1 : 0) + (st.clase_2 ? 1 : 0) + (st.clase_3 ? 1 : 0) + (st.clase_4 ? 1 : 0), 0);
+            const pct = totalClases > 0 ? Math.round((completadas / totalClases) * 100) : 0;
+            return (
+              <div key={group.edition} className="border-l-4 border-pink-500 bg-card rounded-r-xl rounded-l-md border shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-pink-500/5 border-b flex flex-wrap items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-pink-500/15 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-pink-500" />
+                  </div>
+                  <div className="flex-1 min-w-[160px]">
+                    <h3 className="font-bold text-base">{group.edition}</h3>
+                    <p className="text-xs text-muted-foreground">{total} alumno{total !== 1 ? 's' : ''} inscrito{total !== 1 ? 's' : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-2 min-w-[160px]">
+                    <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-pink-500 transition-all" style={{ width: `${pct}%` }} />
                     </div>
-                  </td>
-                  <td className="p-3">
-                    <Badge variant="secondary" className="text-xs">
-                      {new Date(s.fecha_registro).toLocaleDateString('es-AR')}
-                    </Badge>
-                  </td>
-                  <td className="p-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="sm"
-                        className="gap-1 h-8 bg-[#25D366] hover:bg-[#1da851] text-white"
-                        onClick={() => openReceipt(s)}
-                      >
-                        <Receipt className="h-3.5 w-3.5" />
-                        Generar Recibo
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(s.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                    <span className="text-xs font-mono text-muted-foreground">{pct}%</span>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  {group.students.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-muted-foreground">Sin alumnos en esta edición.</div>
+                  ) : (
+                    <table className="w-full text-sm min-w-[1050px]">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Alumno</th>
+                          <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Teléfono</th>
+                          <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Monto</th>
+                          <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Estado</th>
+                          <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">C1</th>
+                          <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">C2</th>
+                          <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">C3</th>
+                          <th className="p-3 text-center text-xs font-semibold uppercase text-muted-foreground">C4</th>
+                          <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">Edición</th>
+                          <th className="p-3"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.students.map(s => (
+                          <tr key={s.id} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-3">
+                              <div className="font-medium">{s.nombre || '—'} {s.apellido || ''}</div>
+                              <div className="text-[10px] text-muted-foreground">{s.curso || ''}</div>
+                            </td>
+                            <td className="p-3 font-mono text-xs">{s.telefono || '—'}</td>
+                            <td className="p-3">
+                              <Input
+                                type="number" inputMode="decimal" className="h-8 w-24 text-xs"
+                                value={s.monto_abonado ?? 0}
+                                onFocus={e => { if (e.target.value === '0') e.target.select(); }}
+                                onChange={e => updateMonto(s.id, Number(e.target.value) || 0)}
+                              />
+                            </td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                {estadoBadge(s.estado_pago)}
+                                <Select value={s.estado_pago} onValueChange={v => updateEstado(s.id, v)}>
+                                  <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {ESTADOS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </td>
+                            {(['clase_1','clase_2','clase_3','clase_4'] as const).map(field => (
+                              <td key={field} className="p-3 text-center">
+                                <Checkbox
+                                  checked={!!(s as any)[field]}
+                                  onCheckedChange={(v) => toggleClase(s.id, field, !!v)}
+                                />
+                              </td>
+                            ))}
+                            <td className="p-3">
+                              <Select value={s.edition || ''} onValueChange={v => updateEdition(s.id, v)}>
+                                <SelectTrigger className="h-7 w-28 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                                <SelectContent>
+                                  {editions.map(ed => <SelectItem key={ed} value={ed}>{ed}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button size="sm" className="gap-1 h-8 bg-[#25D366] hover:bg-[#1da851] text-white" onClick={() => openReceipt(s)}>
+                                  <Receipt className="h-3.5 w-3.5" /> Recibo
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={() => handleDelete(s.id)}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Receipt Dialog — mismo formato visual que la venta de accesorios */}
       <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
