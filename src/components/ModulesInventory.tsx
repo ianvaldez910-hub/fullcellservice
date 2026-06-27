@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Boxes, Plus, Search, Trash2, Pencil, Minus } from 'lucide-react';
+import { Boxes, Plus, Search, Trash2, Pencil, Minus, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Module = {
@@ -25,7 +25,7 @@ const empty: Omit<Module, 'id'> = {
   brand: '', model: '', quality: '', color: '', stock: 0, cost_price: 0, sale_price: 0,
 };
 
-export function ModulesInventory() {
+export function ModulesInventory({ onAddToSale }: { onAddToSale?: (item: { ref_id: string; source: 'module'; name: string; category: string; price: number; stock: number }) => void } = {}) {
   const { user } = useAuth();
   const [items, setItems] = useState<Module[]>([]);
   const [search, setSearch] = useState('');
@@ -205,6 +205,22 @@ export function ModulesInventory() {
                   <TableCell className="text-right font-mono">${(m.sale_price || 0).toLocaleString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      {onAddToSale && (
+                        <Button
+                          size="icon" variant="ghost"
+                          onClick={() => onAddToSale({
+                            ref_id: m.id, source: 'module',
+                            name: `${m.brand} ${m.model}${m.color ? ' · ' + m.color : ''}${m.quality ? ' · ' + m.quality : ''}`.trim(),
+                            category: 'Módulo',
+                            price: Number(m.sale_price) || 0,
+                            stock: Number(m.stock) || 0,
+                          })}
+                          disabled={(m.stock || 0) <= 0}
+                          title="Agregar a Venta"
+                        >
+                          <ShoppingCart className="h-4 w-4 text-pink-600" />
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" onClick={() => openEdit(m)}><Pencil className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => remove(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>

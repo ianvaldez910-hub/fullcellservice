@@ -10,6 +10,7 @@ import { CashRegister } from '@/components/CashRegister';
 import { FinancialSummary } from '@/components/FinancialSummary';
 import { BusinessProfileSettings } from '@/components/BusinessProfileSettings';
 import { AppearanceSettings } from '@/components/AppearanceSettings';
+import { ReceiptDesignSettings } from '@/components/ReceiptDesignSettings';
 import { AdminPanel } from '@/components/AdminPanel';
 import { CursoPanel } from '@/components/CursoPanel';
 import { InventoryPage } from '@/components/InventoryPage';
@@ -305,6 +306,9 @@ export default function Index() {
                 </div>
                 <div className="bg-card rounded-xl border shadow-sm">
                   <BusinessProfileSettings />
+                </div>
+                <div className="bg-card rounded-xl border shadow-sm">
+                  <ReceiptDesignSettings />
                 </div>
               </div>
             )}
