@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Wrench, Plus, Search, Trash2, Pencil, Minus } from 'lucide-react';
+import { Wrench, Plus, Search, Trash2, Pencil, Minus, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Part = {
@@ -21,7 +21,7 @@ type Part = {
 
 const empty: Omit<Part, 'id'> = { category: '', brand: '', part_type: '', price: 0, stock: 0 };
 
-export function SparePartsInventory() {
+export function SparePartsInventory({ onAddToSale }: { onAddToSale?: (item: { ref_id: string; source: 'part'; name: string; category: string; price: number; stock: number }) => void } = {}) {
   const [items, setItems] = useState<Part[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [search, setSearch] = useState('');
@@ -177,6 +177,22 @@ export function SparePartsInventory() {
                   <TableCell className="text-right font-mono">${(p.price || 0).toLocaleString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      {onAddToSale && (
+                        <Button
+                          size="icon" variant="ghost"
+                          onClick={() => onAddToSale({
+                            ref_id: p.id, source: 'part',
+                            name: `${p.part_type}${p.brand ? ' · ' + p.brand : ''}`,
+                            category: p.category || 'Repuesto',
+                            price: Number(p.price) || 0,
+                            stock: Number(p.stock) || 0,
+                          })}
+                          disabled={(p.stock || 0) <= 0}
+                          title="Agregar a Venta"
+                        >
+                          <ShoppingCart className="h-4 w-4 text-pink-600" />
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
