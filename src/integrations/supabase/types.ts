@@ -50,9 +50,14 @@ export type Database = {
       course_students: {
         Row: {
           apellido: string
+          clase_1: boolean
+          clase_2: boolean
+          clase_3: boolean
+          clase_4: boolean
           created_at: string
           created_by: string | null
           curso: string
+          edition: string | null
           estado_pago: string
           fecha_registro: string
           id: string
@@ -63,9 +68,14 @@ export type Database = {
         }
         Insert: {
           apellido?: string
+          clase_1?: boolean
+          clase_2?: boolean
+          clase_3?: boolean
+          clase_4?: boolean
           created_at?: string
           created_by?: string | null
           curso?: string
+          edition?: string | null
           estado_pago?: string
           fecha_registro?: string
           id?: string
@@ -76,9 +86,14 @@ export type Database = {
         }
         Update: {
           apellido?: string
+          clase_1?: boolean
+          clase_2?: boolean
+          clase_3?: boolean
+          clase_4?: boolean
           created_at?: string
           created_by?: string | null
           curso?: string
+          edition?: string | null
           estado_pago?: string
           fecha_registro?: string
           id?: string
@@ -326,6 +341,57 @@ export type Database = {
           items_sold?: Json
           total_amount?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      spare_part_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      spare_parts: {
+        Row: {
+          brand: string | null
+          category: string
+          created_at: string
+          id: string
+          part_type: string
+          price: number
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          category: string
+          created_at?: string
+          id?: string
+          part_type: string
+          price?: number
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          part_type?: string
+          price?: number
+          stock?: number
+          updated_at?: string
         }
         Relationships: []
       }

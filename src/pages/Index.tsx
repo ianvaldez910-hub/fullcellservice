@@ -12,7 +12,7 @@ import { BusinessProfileSettings } from '@/components/BusinessProfileSettings';
 import { AppearanceSettings } from '@/components/AppearanceSettings';
 import { AdminPanel } from '@/components/AdminPanel';
 import { CursoPanel } from '@/components/CursoPanel';
-import { ModulesInventory } from '@/components/ModulesInventory';
+import { InventoryPage } from '@/components/InventoryPage';
 import { AccessoriesPOS } from '@/components/AccessoriesPOS';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
@@ -319,7 +319,7 @@ export default function Index() {
               </div>
             )}
             {page === 'inventory' && (
-              <div key="inventory-page"><ModulesInventory /></div>
+              <div key="inventory-page"><InventoryPage /></div>
             )}
             {page === 'accessories' && (
               <div key="accessories-page"><AccessoriesPOS /></div>
