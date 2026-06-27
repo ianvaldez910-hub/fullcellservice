@@ -307,6 +307,9 @@ export default function Index() {
                 <div className="bg-card rounded-xl border shadow-sm">
                   <BusinessProfileSettings />
                 </div>
+                <div className="bg-card rounded-xl border shadow-sm">
+                  <ReceiptDesignSettings />
+                </div>
               </div>
             )}
             {page === 'admin' && (
