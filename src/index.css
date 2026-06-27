@@ -127,3 +127,28 @@ a[href*="lovable.dev"][target="_blank"][rel*="noopener"] {
   pointer-events: none !important;
   opacity: 0 !important;
 }
+
+/* ============= Recibo de Venta: impresión térmica 80mm ============= */
+@media print {
+  body.printing-receipt > *:not(.print-receipt-portal) { display: none !important; }
+  body.printing-receipt #sales-receipt-print-area,
+  body.printing-receipt #sales-receipt-print-area * { visibility: visible !important; }
+  body.printing-receipt {
+    background: white !important;
+  }
+  /* Move the receipt to top-left and remove all chrome */
+  body.printing-receipt #sales-receipt-print-area {
+    position: fixed !important;
+    inset: 0 auto auto 0 !important;
+    margin: 0 !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    box-shadow: none !important;
+  }
+  .print-hidden { display: none !important; }
+  @page { size: 80mm auto; margin: 4mm; }
+}
+
+/* When printing the receipt, hide everything except the receipt area */
+body.printing-receipt [data-radix-popper-content-wrapper],
+body.printing-receipt .toaster { display: none !important; }
