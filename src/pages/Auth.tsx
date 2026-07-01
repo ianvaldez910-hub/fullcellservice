@@ -33,16 +33,26 @@ export default function Auth() {
   const handleGoogle = async () => {
     setGoogleLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
-      });
+      const redirectUri = window.location.origin;
+      console.info('[auth] google OAuth start', { redirectUri, host: window.location.host });
+      const result = await lovable.auth.signInWithOAuth('google', { redirect_uri: redirectUri });
       if (result.error) {
-        toast.error(result.error.message || 'No se pudo iniciar sesión con Google');
+        console.error('[auth] google OAuth error', {
+          message: (result.error as any)?.message,
+          name: (result.error as any)?.name,
+          full: result.error,
+        });
+        toast.error((result.error as any)?.message || 'No se pudo iniciar sesión con Google');
         setGoogleLoading(false);
         return;
       }
-      if (result.redirected) return;
+      if (result.redirected) {
+        console.info('[auth] google OAuth redirected');
+        return;
+      }
+      console.info('[auth] google OAuth completed inline');
     } catch (e: any) {
+      console.error('[auth] google OAuth threw', { message: e?.message, stack: e?.stack });
       toast.error(e?.message || 'Error con Google');
       setGoogleLoading(false);
     }
