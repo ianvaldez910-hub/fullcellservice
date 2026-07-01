@@ -121,17 +121,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearAuthState, fetchProfile, recoverFromAuthError]);
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    return { error };
+    try {
+      const redirectTo = `${window.location.origin}/`;
+      console.info('[auth] signUp start', { email, redirectTo, origin: window.location.origin });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: redirectTo },
+      });
+      if (error) {
+        console.error('[auth] signUp error', { name: error.name, status: (error as any).status, message: error.message });
+      } else {
+        console.info('[auth] signUp ok', { userId: data.user?.id, needsConfirm: !data.session });
+      }
+      return { error };
+    } catch (err: any) {
+      console.error('[auth] signUp threw', { message: err?.message, stack: err?.stack });
+      return { error: err };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    try {
+      console.info('[auth] signIn start', { email, origin: window.location.origin });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error('[auth] signIn error', { name: error.name, status: (error as any).status, message: error.message });
+      } else {
+        console.info('[auth] signIn ok', { userId: data.user?.id });
+      }
+      return { error };
+    } catch (err: any) {
+      console.error('[auth] signIn threw', { message: err?.message, stack: err?.stack });
+      return { error: err };
+    }
   };
 
   const signOut = async () => {
