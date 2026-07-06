@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DialogFooter } from '@/components/ui/dialog';
-import { GraduationCap, Plus, Trash2, Loader2, Receipt, Download, Image as ImageIcon, Users } from 'lucide-react';
+import { GraduationCap, Plus, Trash2, Loader2, Receipt, Download, Image as ImageIcon, Users, Pencil } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
@@ -35,9 +35,9 @@ const ESTADOS = [
   { value: 'señado', label: 'Señado' },
 ];
 
-const DEFAULT_EDITIONS = ['Edición 1', 'Edición 2', 'Edición 3', 'Edición 4'];
-
 const money = (n: number) => `$${(Number(n) || 0).toLocaleString('es-AR')}`;
+
+interface EditionRow { id: string; name: string; }
 
 function estadoBadge(estado: string) {
   if (estado === 'pagado') {
@@ -47,18 +47,24 @@ function estadoBadge(estado: string) {
 }
 
 export function CursoPanel() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
+  const [editionsList, setEditionsList] = useState<EditionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     nombre: '', apellido: '', telefono: '', estado_pago: 'señado',
-    monto_abonado: 0, curso: '', edition: 'Edición 1',
+    monto_abonado: 0, curso: '', edition: '',
   });
   const [activeEdition, setActiveEdition] = useState<string>('all');
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // Edition management modal
+  const [editionModalOpen, setEditionModalOpen] = useState(false);
+  const [editionForm, setEditionForm] = useState<{ id: string | null; name: string }>({ id: null, name: '' });
+  const [editionSaving, setEditionSaving] = useState(false);
 
   const bName = profile?.business_name || 'Mi Taller';
   const bAddress = (profile as any)?.address ? `${(profile as any).address}${(profile as any).city ? `, ${(profile as any).city}` : ''}` : '';
@@ -77,7 +83,19 @@ export function CursoPanel() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchStudents(); }, []);
+  const fetchEditions = async () => {
+    const { data, error } = await supabase
+      .from('course_editions' as any)
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) {
+      toast.error('Error cargando ediciones');
+    } else {
+      setEditionsList((data as unknown as EditionRow[]) || []);
+    }
+  };
+
+  useEffect(() => { fetchStudents(); fetchEditions(); }, []);
 
   const handleAdd = async () => {
     if (!form.nombre.trim()) {
@@ -145,12 +163,56 @@ export function CursoPanel() {
     if (error) toast.error('Error actualizando asistencia');
   };
 
-  // Editions present in data ∪ defaults
+  // Editions come from DB + any historical edition present in student rows
   const editions = useMemo(() => {
-    const set = new Set<string>(DEFAULT_EDITIONS);
+    const set = new Set<string>();
+    editionsList.forEach(e => set.add(e.name));
     students.forEach(s => { if (s.edition) set.add(s.edition); });
-    return Array.from(set).sort();
-  }, [students]);
+    return Array.from(set);
+  }, [students, editionsList]);
+
+  // Keep the "new student" form edition valid as editions load/change
+  useEffect(() => {
+    if (!form.edition && editions.length > 0) {
+      setForm(f => ({ ...f, edition: editions[0] }));
+    }
+  }, [editions, form.edition]);
+
+  const openNewEdition = () => { setEditionForm({ id: null, name: '' }); setEditionModalOpen(true); };
+  const openEditEdition = (e: EditionRow) => { setEditionForm({ id: e.id, name: e.name }); setEditionModalOpen(true); };
+
+  const saveEdition = async () => {
+    const name = editionForm.name.trim();
+    if (!name) { toast.error('Ingresá el nombre de la edición'); return; }
+    setEditionSaving(true);
+    if (editionForm.id) {
+      const oldName = editionsList.find(e => e.id === editionForm.id)?.name;
+      const { error } = await supabase.from('course_editions' as any).update({ name }).eq('id', editionForm.id);
+      if (!error && oldName && oldName !== name) {
+        // propagate rename to students
+        await supabase.from('course_students' as any).update({ edition: name }).eq('edition', oldName);
+      }
+      if (error) { toast.error('No se pudo actualizar: ' + error.message); setEditionSaving(false); return; }
+      toast.success('Edición actualizada');
+    } else {
+      const { error } = await supabase.from('course_editions' as any).insert({ name });
+      if (error) { toast.error('No se pudo crear: ' + error.message); setEditionSaving(false); return; }
+      toast.success('Edición creada');
+    }
+    setEditionSaving(false);
+    setEditionModalOpen(false);
+    await fetchEditions();
+    await fetchStudents();
+  };
+
+  const deleteEdition = async (e: EditionRow) => {
+    if (!confirm(`¿Eliminar "${e.name}"? Los alumnos asignados quedarán sin edición.`)) return;
+    const { error } = await supabase.from('course_editions' as any).delete().eq('id', e.id);
+    if (error) { toast.error('No se pudo eliminar: ' + error.message); return; }
+    toast.success('Edición eliminada');
+    if (activeEdition === e.name) setActiveEdition('all');
+    await fetchEditions();
+  };
 
   // Group by edition
   const grouped = useMemo(() => {
@@ -240,6 +302,30 @@ export function CursoPanel() {
             {ed}
           </Button>
         ))}
+        {isAdmin && (
+          <>
+            <div className="w-px h-6 bg-border mx-1" />
+            <Button size="sm" onClick={openNewEdition} className="bg-pink-600 hover:bg-pink-700 text-white gap-1">
+              <Plus className="h-4 w-4" /> Nueva Edición
+            </Button>
+            {activeEdition !== 'all' && editionsList.some(e => e.name === activeEdition) && (
+              <>
+                <Button size="sm" variant="outline" className="gap-1" onClick={() => {
+                  const e = editionsList.find(x => x.name === activeEdition);
+                  if (e) openEditEdition(e);
+                }}>
+                  <Pencil className="h-3.5 w-3.5" /> Renombrar
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1 text-destructive" onClick={() => {
+                  const e = editionsList.find(x => x.name === activeEdition);
+                  if (e) deleteEdition(e);
+                }}>
+                  <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                </Button>
+              </>
+            )}
+          </>
+        )}
       </div>
 
       <div className="bg-card rounded-xl border shadow-sm p-4 space-y-3">
