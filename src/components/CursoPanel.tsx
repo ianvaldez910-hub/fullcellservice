@@ -542,6 +542,32 @@ export function CursoPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal: crear / editar edición (solo admin) */}
+      <Dialog open={editionModalOpen} onOpenChange={setEditionModalOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editionForm.id ? 'Editar Edición' : 'Nueva Edición'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-muted-foreground">Nombre de la Edición</label>
+            <Input
+              autoFocus
+              placeholder="Ej: Edición 5"
+              value={editionForm.name}
+              onChange={e => setEditionForm(f => ({ ...f, name: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') saveEdition(); }}
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditionModalOpen(false)}>Cancelar</Button>
+            <Button onClick={saveEdition} disabled={editionSaving} className="bg-pink-600 hover:bg-pink-700 text-white gap-2">
+              {editionSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
