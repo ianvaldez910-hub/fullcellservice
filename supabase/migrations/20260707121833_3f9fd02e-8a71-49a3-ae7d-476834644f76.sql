@@ -1,0 +1,1 @@
+ALTER TABLE public.course_students ADD COLUMN IF NOT EXISTS dni text;

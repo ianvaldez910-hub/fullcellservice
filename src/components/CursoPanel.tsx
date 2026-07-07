@@ -18,6 +18,7 @@ interface Student {
   id: string;
   nombre: string;
   apellido: string;
+  dni?: string | null;
   telefono: string;
   estado_pago: string;
   monto_abonado: number;
@@ -53,10 +54,11 @@ export function CursoPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    nombre: '', apellido: '', telefono: '', estado_pago: 'señado',
+    nombre: '', apellido: '', dni: '', telefono: '', estado_pago: 'señado',
     monto_abonado: 0, curso: '', edition: '',
   });
   const [activeEdition, setActiveEdition] = useState<string>('all');
+  const [search, setSearch] = useState('');
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -102,10 +104,15 @@ export function CursoPanel() {
       toast.error('Ingresá el nombre');
       return;
     }
+    if (!form.dni.trim() || form.dni.trim().length < 6) {
+      toast.error('Ingresá un DNI válido (mínimo 6 caracteres)');
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.from('course_students' as any).insert({
       nombre: form.nombre.trim(),
       apellido: form.apellido.trim(),
+      dni: form.dni.trim(),
       telefono: form.telefono.trim(),
       estado_pago: form.estado_pago,
       monto_abonado: Number(form.monto_abonado) || 0,
@@ -118,7 +125,7 @@ export function CursoPanel() {
       return;
     }
     toast.success('Alumno registrado');
-    setForm({ nombre: '', apellido: '', telefono: '', estado_pago: 'señado', monto_abonado: 0, curso: '', edition: form.edition });
+    setForm({ nombre: '', apellido: '', dni: '', telefono: '', estado_pago: 'señado', monto_abonado: 0, curso: '', edition: form.edition });
     fetchStudents();
   };
 
@@ -155,6 +162,12 @@ export function CursoPanel() {
     setStudents(s => s.map(st => st.id === id ? { ...st, edition } : st));
     const { error } = await supabase.from('course_students' as any).update({ edition }).eq('id', id);
     if (error) toast.error('Error actualizando edición');
+  };
+
+  const updateDni = async (id: string, dni: string) => {
+    setStudents(s => s.map(st => st.id === id ? { ...st, dni } : st));
+    const { error } = await supabase.from('course_students' as any).update({ dni }).eq('id', id);
+    if (error) toast.error('Error actualizando DNI');
   };
 
   const toggleClase = async (id: string, field: 'clase_1' | 'clase_2' | 'clase_3' | 'clase_4', value: boolean) => {
@@ -216,16 +229,28 @@ export function CursoPanel() {
 
   // Group by edition
   const grouped = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const matches = (s: Student) => {
+      if (!q) return true;
+      const dni = (s.dni || '').toLowerCase().replace(/\./g, '');
+      const nq = q.replace(/\./g, '');
+      return (
+        (s.nombre || '').toLowerCase().includes(q) ||
+        (s.apellido || '').toLowerCase().includes(q) ||
+        dni.includes(nq) ||
+        (s.telefono || '').includes(q)
+      );
+    };
     const list = activeEdition === 'all' ? editions : [activeEdition];
     return list.map(ed => ({
       edition: ed,
-      students: students.filter(s => (s.edition || 'Sin asignar') === ed),
+      students: students.filter(s => (s.edition || 'Sin asignar') === ed && matches(s)),
     })).concat(
       activeEdition === 'all'
-        ? [{ edition: 'Sin asignar', students: students.filter(s => !s.edition) }]
+        ? [{ edition: 'Sin asignar', students: students.filter(s => !s.edition && matches(s)) }]
         : []
     ).filter(g => g.students.length > 0 || activeEdition !== 'all');
-  }, [students, editions, activeEdition]);
+  }, [students, editions, activeEdition, search]);
 
   const openReceipt = (s: Student) => {
     setReceiptStudent(s);
@@ -328,6 +353,16 @@ export function CursoPanel() {
         )}
       </div>
 
+      {/* Buscador */}
+      <div className="bg-card border rounded-xl p-3">
+        <Input
+          placeholder="Buscar alumno por nombre, apellido, DNI o teléfono..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="h-9"
+        />
+      </div>
+
       <div className="bg-card rounded-xl border shadow-sm p-4 space-y-3">
         <h3 className="font-semibold text-sm">Nuevo alumno</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -340,6 +375,11 @@ export function CursoPanel() {
             placeholder="Apellido"
             value={form.apellido}
             onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))}
+          />
+          <Input
+            placeholder="DNI (obligatorio)"
+            value={form.dni}
+            onChange={e => setForm(f => ({ ...f, dni: e.target.value }))}
           />
           <Input
             placeholder="Teléfono"
@@ -432,6 +472,7 @@ export function CursoPanel() {
                           <tr key={s.id} className="border-b border-border/50 hover:bg-muted/30">
                             <td className="p-3">
                               <div className="font-medium">{s.nombre || '—'} {s.apellido || ''}</div>
+                              {s.dni && <div className="text-[10px] text-muted-foreground">DNI: {s.dni}</div>}
                               <div className="text-[10px] text-muted-foreground">{s.curso || ''}</div>
                             </td>
                             <td className="p-3 font-mono text-xs">{s.telefono || '—'}</td>
@@ -511,6 +552,9 @@ export function CursoPanel() {
                   <div className="flex justify-between gap-2">
                     <span className="flex-1">Alumno: <span className="font-bold">{receiptStudent.nombre} {receiptStudent.apellido}</span></span>
                   </div>
+                  {receiptStudent.dni && (
+                    <div className="text-[10px] opacity-70">DNI: {receiptStudent.dni}</div>
+                  )}
                   <div className="flex justify-between gap-2 mt-1">
                     <span className="flex-1">1 x {receiptStudent.curso || 'Curso'}</span>
                     <span className="font-mono">{money(receiptStudent.monto_abonado)}</span>
