@@ -229,16 +229,28 @@ export function CursoPanel() {
 
   // Group by edition
   const grouped = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const matches = (s: Student) => {
+      if (!q) return true;
+      const dni = (s.dni || '').toLowerCase().replace(/\./g, '');
+      const nq = q.replace(/\./g, '');
+      return (
+        (s.nombre || '').toLowerCase().includes(q) ||
+        (s.apellido || '').toLowerCase().includes(q) ||
+        dni.includes(nq) ||
+        (s.telefono || '').includes(q)
+      );
+    };
     const list = activeEdition === 'all' ? editions : [activeEdition];
     return list.map(ed => ({
       edition: ed,
-      students: students.filter(s => (s.edition || 'Sin asignar') === ed),
+      students: students.filter(s => (s.edition || 'Sin asignar') === ed && matches(s)),
     })).concat(
       activeEdition === 'all'
-        ? [{ edition: 'Sin asignar', students: students.filter(s => !s.edition) }]
+        ? [{ edition: 'Sin asignar', students: students.filter(s => !s.edition && matches(s)) }]
         : []
     ).filter(g => g.students.length > 0 || activeEdition !== 'all');
-  }, [students, editions, activeEdition]);
+  }, [students, editions, activeEdition, search]);
 
   const openReceipt = (s: Student) => {
     setReceiptStudent(s);
@@ -353,6 +365,11 @@ export function CursoPanel() {
             placeholder="Apellido"
             value={form.apellido}
             onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))}
+          />
+          <Input
+            placeholder="DNI (obligatorio)"
+            value={form.dni}
+            onChange={e => setForm(f => ({ ...f, dni: e.target.value }))}
           />
           <Input
             placeholder="Teléfono"
