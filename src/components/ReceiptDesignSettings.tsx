@@ -33,16 +33,29 @@ export function ReceiptDesignSettings() {
 
   const onUpload = async (file: File) => {
     if (!user) return;
+    if (!/^image\//i.test(file.type)) {
+      toast.error('El archivo debe ser una imagen');
+      return;
+    }
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop() || 'png';
-      const path = `receipts/${user.id}-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('workshop_logos').upload(path, file, { upsert: true });
-      if (error) throw error;
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      // RLS requires first folder = auth.uid()
+      const path = `${user.id}/receipt-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('workshop_logos')
+        .upload(path, file, { upsert: true, cacheControl: '3600', contentType: file.type });
+      if (upErr) throw upErr;
       const { data } = supabase.storage.from('workshop_logos').getPublicUrl(path);
-      set('logo_url', data.publicUrl);
-      toast.success('Logo cargado. Recordá guardar los cambios.');
+      const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
+      // Update local preview immediately AND persist to DB so the receipt uses it right away
+      const next = { ...draft, logo_url: publicUrl };
+      set('logo_url', publicUrl);
+      const { error: saveErr } = await save(next);
+      if (saveErr) throw saveErr;
+      toast.success('Logo actualizado');
     } catch (e: any) {
+      console.error('[receipt-logo-upload]', e);
       toast.error(e?.message || 'Error al subir el logo');
     } finally { setUploading(false); }
   };
