@@ -11,6 +11,7 @@ import TrialExpired from "./pages/TrialExpired";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
 import Tracking from "./pages/Tracking";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -19,11 +20,12 @@ function AppRoutes() {
 
   // Public tracking route — bypasses auth entirely
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
-  if (path === '/seguimiento' || path === '/consulta') {
+  if (path === '/seguimiento' || path === '/consulta' || path === '/reset-password') {
     return (
       <Routes>
         <Route path="/seguimiento" element={<Tracking />} />
         <Route path="/consulta" element={<Tracking />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     );
   }
@@ -70,6 +72,7 @@ function AppRoutes() {
       <Route path="/" element={<Index />} />
       <Route path="/seguimiento" element={<Tracking />} />
       <Route path="/consulta" element={<Tracking />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
