@@ -353,6 +353,16 @@ export function CursoPanel() {
         )}
       </div>
 
+      {/* Buscador */}
+      <div className="bg-card border rounded-xl p-3">
+        <Input
+          placeholder="Buscar alumno por nombre, apellido, DNI o teléfono..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="h-9"
+        />
+      </div>
+
       <div className="bg-card rounded-xl border shadow-sm p-4 space-y-3">
         <h3 className="font-semibold text-sm">Nuevo alumno</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -462,6 +472,7 @@ export function CursoPanel() {
                           <tr key={s.id} className="border-b border-border/50 hover:bg-muted/30">
                             <td className="p-3">
                               <div className="font-medium">{s.nombre || '—'} {s.apellido || ''}</div>
+                              {s.dni && <div className="text-[10px] text-muted-foreground">DNI: {s.dni}</div>}
                               <div className="text-[10px] text-muted-foreground">{s.curso || ''}</div>
                             </td>
                             <td className="p-3 font-mono text-xs">{s.telefono || '—'}</td>
