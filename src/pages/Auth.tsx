@@ -1,32 +1,108 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wrench, LogIn, UserPlus, Loader2 } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { Wrench, LogIn, UserPlus, Loader2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { lovable } from '@/integrations/lovable/index';
 
+// Detects if an input string looks like a phone number (digits, +, spaces, dashes)
+function isPhone(v: string) {
+  const s = v.trim();
+  if (s.includes('@')) return false;
+  return /^[+\d][\d\s\-()]{5,}$/.test(s);
+}
+function normalizePhone(v: string) {
+  const s = v.trim().replace(/[\s\-()]/g, '');
+  return s.startsWith('+') ? s : `+${s}`;
+}
+
 export default function Auth() {
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState(''); // email or phone
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Forgot password modal
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotId, setForgotId] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    const { error } = isLogin
-      ? await signIn(email, password)
-      : await signUp(email, password);
-    setLoading(false);
+    const id = identifier.trim();
+    if (!id) return toast.error('Ingresá tu correo o teléfono');
+    if (password.length < 6) return toast.error('La contraseña debe tener al menos 6 caracteres');
 
-    if (error) {
-      toast.error(error.message);
-    } else if (!isLogin) {
-      toast.success('¡Cuenta creada! Revisa tu correo para confirmar.');
+    if (!isLogin && password !== confirmPassword) {
+      return toast.error('Las contraseñas no coinciden');
+    }
+
+    const usingPhone = isPhone(id);
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        if (usingPhone) {
+          const { error } = await supabase.auth.signInWithPassword({
+            phone: normalizePhone(id), password,
+          });
+          if (error) toast.error(error.message);
+        } else {
+          const { error } = await signIn(id, password);
+          if (error) toast.error(error.message);
+        }
+      } else {
+        if (usingPhone) {
+          const { error } = await supabase.auth.signUp({
+            phone: normalizePhone(id), password,
+          });
+          if (error) toast.error(error.message);
+          else toast.success('¡Cuenta creada! Verificá el código enviado por SMS.');
+        } else {
+          const redirectTo = `${window.location.origin}/`;
+          const { error } = await supabase.auth.signUp({
+            email: id, password,
+            options: { emailRedirectTo: redirectTo },
+          });
+          if (error) toast.error(error.message);
+          else toast.success('¡Cuenta creada! Revisá tu correo para confirmar.');
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const id = forgotId.trim();
+    if (!id) return toast.error('Ingresá tu correo o teléfono');
+    setForgotLoading(true);
+    try {
+      if (isPhone(id)) {
+        const { error } = await supabase.auth.signInWithOtp({ phone: normalizePhone(id) });
+        if (error) toast.error(error.message);
+        else toast.success('Enviamos un código de recuperación por SMS.');
+      } else {
+        const { error } = await supabase.auth.resetPasswordForEmail(id, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) toast.error(error.message);
+        else toast.success('Te enviamos un enlace de recuperación a tu correo.');
+      }
+      setForgotOpen(false);
+      setForgotId('');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -69,12 +145,14 @@ export default function Auth() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Correo Electrónico</Label>
+            <Label>Correo o Teléfono</Label>
             <Input
-              type="email"
-              placeholder="tu@email.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              type="text"
+              inputMode="email"
+              autoComplete={isLogin ? 'username' : 'email'}
+              placeholder="tu@email.com o +54 9 11..."
+              value={identifier}
+              onChange={e => setIdentifier(e.target.value)}
               required
               disabled={loading}
             />
@@ -90,7 +168,38 @@ export default function Auth() {
               minLength={6}
               disabled={loading}
             />
+            {!isLogin && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Creá una contraseña única para tu cuenta de FullCell. Por tu seguridad, no uses la misma contraseña de tu correo personal.
+              </p>
+            )}
           </div>
+          {!isLogin && (
+            <div className="space-y-2">
+              <Label>Confirmar contraseña</Label>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                disabled={loading}
+              />
+            </div>
+          )}
+          {isLogin && (
+            <div className="flex justify-end -mt-2">
+              <button
+                type="button"
+                onClick={() => { setForgotId(identifier); setForgotOpen(true); }}
+                className="text-xs text-primary hover:underline"
+                disabled={loading}
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+          )}
           <Button type="submit" className="w-full gap-2" disabled={loading}>
             {loading ? (
               <>
@@ -142,7 +251,7 @@ export default function Auth() {
           {isLogin ? '¿No tenés cuenta?' : '¿Ya tenés cuenta?'}{' '}
           <button
             type="button"
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => { setIsLogin(!isLogin); setConfirmPassword(''); }}
             className="text-primary font-medium hover:underline"
             disabled={loading}
           >
@@ -150,6 +259,42 @@ export default function Auth() {
           </button>
         </p>
       </div>
+
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4" /> Recuperar contraseña
+            </DialogTitle>
+            <DialogDescription>
+              Ingresá tu correo o teléfono y te enviaremos un enlace o código para restablecer tu contraseña.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleForgot} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Correo o Teléfono</Label>
+              <Input
+                type="text"
+                placeholder="tu@email.com o +54 9 11..."
+                value={forgotId}
+                onChange={e => setForgotId(e.target.value)}
+                required
+                disabled={forgotLoading}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setForgotOpen(false)} disabled={forgotLoading}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={forgotLoading} className="gap-2">
+                {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                Enviar enlace
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
