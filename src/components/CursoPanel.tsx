@@ -18,6 +18,7 @@ interface Student {
   id: string;
   nombre: string;
   apellido: string;
+  dni?: string | null;
   telefono: string;
   estado_pago: string;
   monto_abonado: number;
@@ -53,10 +54,11 @@ export function CursoPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    nombre: '', apellido: '', telefono: '', estado_pago: 'señado',
+    nombre: '', apellido: '', dni: '', telefono: '', estado_pago: 'señado',
     monto_abonado: 0, curso: '', edition: '',
   });
   const [activeEdition, setActiveEdition] = useState<string>('all');
+  const [search, setSearch] = useState('');
   const [receiptStudent, setReceiptStudent] = useState<Student | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -102,10 +104,15 @@ export function CursoPanel() {
       toast.error('Ingresá el nombre');
       return;
     }
+    if (!form.dni.trim() || form.dni.trim().length < 6) {
+      toast.error('Ingresá un DNI válido (mínimo 6 caracteres)');
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.from('course_students' as any).insert({
       nombre: form.nombre.trim(),
       apellido: form.apellido.trim(),
+      dni: form.dni.trim(),
       telefono: form.telefono.trim(),
       estado_pago: form.estado_pago,
       monto_abonado: Number(form.monto_abonado) || 0,
@@ -118,7 +125,7 @@ export function CursoPanel() {
       return;
     }
     toast.success('Alumno registrado');
-    setForm({ nombre: '', apellido: '', telefono: '', estado_pago: 'señado', monto_abonado: 0, curso: '', edition: form.edition });
+    setForm({ nombre: '', apellido: '', dni: '', telefono: '', estado_pago: 'señado', monto_abonado: 0, curso: '', edition: form.edition });
     fetchStudents();
   };
 
@@ -155,6 +162,12 @@ export function CursoPanel() {
     setStudents(s => s.map(st => st.id === id ? { ...st, edition } : st));
     const { error } = await supabase.from('course_students' as any).update({ edition }).eq('id', id);
     if (error) toast.error('Error actualizando edición');
+  };
+
+  const updateDni = async (id: string, dni: string) => {
+    setStudents(s => s.map(st => st.id === id ? { ...st, dni } : st));
+    const { error } = await supabase.from('course_students' as any).update({ dni }).eq('id', id);
+    if (error) toast.error('Error actualizando DNI');
   };
 
   const toggleClase = async (id: string, field: 'clase_1' | 'clase_2' | 'clase_3' | 'clase_4', value: boolean) => {
