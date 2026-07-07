@@ -143,8 +143,8 @@ export function ReceiptDesignSettings() {
           <div className="space-y-2">
             <Label>Logotipo del taller</Label>
             <div className="flex items-center gap-3">
-              {draft.logo_url ? (
-                <img src={draft.logo_url} alt="logo" className="h-16 w-16 rounded-lg object-cover border" />
+              {(localPreview || draft.logo_url) ? (
+                <img src={localPreview || draft.logo_url!} alt="logo" className="h-16 w-16 rounded-lg object-cover border" />
               ) : (
                 <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">sin logo</div>
               )}
@@ -219,7 +219,7 @@ export function ReceiptDesignSettings() {
               }}
             >
               <div style={{ textAlign: 'center', borderBottom: `2px dashed ${draft.accent_color}`, paddingBottom: 10, marginBottom: 12 }}>
-                {draft.logo_url && <img src={draft.logo_url} alt="logo" style={{ height: 48, width: 48, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 6px' }} />}
+                {(localPreview || draft.logo_url) && <img src={localPreview || draft.logo_url!} alt="logo" style={{ height: 48, width: 48, borderRadius: '50%', objectFit: 'cover', margin: '0 auto 6px' }} />}
                 <div style={{ fontWeight: 700, color: draft.accent_color }}>{bName}</div>
                 {draft.header_text && <div style={{ fontSize: 10, opacity: 0.85, whiteSpace: 'pre-line' }}>{draft.header_text}</div>}
               </div>
