@@ -24,40 +24,95 @@ export function ReceiptDesignSettings() {
   const [draft, setDraft] = useState<ReceiptSettings>(settings);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setDraft(settings); }, [settings]);
+
+  // Cleanup object URL on unmount to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      if (localPreview) URL.revokeObjectURL(localPreview);
+    };
+  }, [localPreview]);
 
   const set = <K extends keyof ReceiptSettings>(k: K, v: ReceiptSettings[K]) =>
     setDraft(d => ({ ...d, [k]: v }));
 
   const onUpload = async (file: File) => {
-    if (!user) return;
-    if (!/^image\//i.test(file.type)) {
-      toast.error('El archivo debe ser una imagen');
+    if (!user) {
+      toast.error('Debes iniciar sesión para subir un logo');
       return;
     }
+    if (!/^image\//i.test(file.type)) {
+      toast.error('El archivo debe ser una imagen (PNG, JPG, WEBP)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen debe pesar menos de 5MB');
+      return;
+    }
+
+    // 1) Instant local preview
+    const objectUrl = URL.createObjectURL(file);
+    if (localPreview) URL.revokeObjectURL(localPreview);
+    setLocalPreview(objectUrl);
+
+    // 2) Loading toast
+    const loadingId = toast.loading('Procesando y subiendo logotipo...');
     setUploading(true);
+
     try {
-      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      // Sanitize filename: remove accents, special chars, spaces
+      const rawName = file.name.replace(/\.[^.]+$/, '');
+      const safeName = rawName
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9-_]/g, '-')
+        .toLowerCase()
+        .slice(0, 40) || 'logo';
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
       // RLS requires first folder = auth.uid()
-      const path = `${user.id}/receipt-${Date.now()}.${ext}`;
+      const path = `${user.id}/receipt-${safeName}-${Date.now()}.${ext}`;
+
       const { error: upErr } = await supabase.storage
         .from('workshop_logos')
         .upload(path, file, { upsert: true, cacheControl: '3600', contentType: file.type });
-      if (upErr) throw upErr;
+
+      if (upErr) {
+        console.error('[receipt-logo-upload][storage]', upErr);
+        toast.dismiss(loadingId);
+        toast.error(`Error al subir imagen: ${upErr.message}`);
+        return;
+      }
+
       const { data } = supabase.storage.from('workshop_logos').getPublicUrl(path);
       const publicUrl = `${data.publicUrl}?t=${Date.now()}`;
-      // Update local preview immediately AND persist to DB so the receipt uses it right away
+
+      // 3) Update draft immediately and persist to DB so the receipt uses it right away
       const next = { ...draft, logo_url: publicUrl };
       set('logo_url', publicUrl);
+
       const { error: saveErr } = await save(next);
-      if (saveErr) throw saveErr;
-      toast.success('Logo actualizado');
+      if (saveErr) {
+        console.error('[receipt-logo-upload][db]', saveErr);
+        toast.dismiss(loadingId);
+        toast.error(`Error al guardar configuración: ${saveErr.message || saveErr}`);
+        return;
+      }
+
+      toast.dismiss(loadingId);
+      toast.success('¡Logotipo guardado y aplicado con éxito!');
+
+      // Once the remote URL is live, revoke the local blob preview
+      URL.revokeObjectURL(objectUrl);
+      setLocalPreview(null);
     } catch (e: any) {
-      console.error('[receipt-logo-upload]', e);
-      toast.error(e?.message || 'Error al subir el logo');
-    } finally { setUploading(false); }
+      console.error('[receipt-logo-upload][unexpected]', e);
+      toast.dismiss(loadingId);
+      toast.error(`Error inesperado: ${e?.message || 'desconocido'}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const onSave = async () => {
