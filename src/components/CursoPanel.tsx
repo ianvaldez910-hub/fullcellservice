@@ -552,6 +552,9 @@ export function CursoPanel() {
                   <div className="flex justify-between gap-2">
                     <span className="flex-1">Alumno: <span className="font-bold">{receiptStudent.nombre} {receiptStudent.apellido}</span></span>
                   </div>
+                  {receiptStudent.dni && (
+                    <div className="text-[10px] opacity-70">DNI: {receiptStudent.dni}</div>
+                  )}
                   <div className="flex justify-between gap-2 mt-1">
                     <span className="flex-1">1 x {receiptStudent.curso || 'Curso'}</span>
                     <span className="font-mono">{money(receiptStudent.monto_abonado)}</span>
