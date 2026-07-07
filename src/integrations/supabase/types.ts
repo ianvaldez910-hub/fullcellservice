@@ -75,6 +75,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           curso: string
+          dni: string | null
           edition: string | null
           estado_pago: string
           fecha_registro: string
@@ -93,6 +94,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           curso?: string
+          dni?: string | null
           edition?: string | null
           estado_pago?: string
           fecha_registro?: string
@@ -111,6 +113,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           curso?: string
+          dni?: string | null
           edition?: string | null
           estado_pago?: string
           fecha_registro?: string
